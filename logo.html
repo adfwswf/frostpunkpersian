@@ -1,0 +1,131 @@
+const gameState = {
+    day: 1, population: 5, maxPopulation: 200, fuel: 5, maxFuel: 500, food: 15, maxFood: 400,
+    wood: 20, stone: 10, hope: 30, satisfaction: 50, heat: 5, fireIntensity: 20,
+    buildings: { oil_well: 0, house: 0, farm: 0, workshop: 0, wall: 0 },
+    factions: { garshasp: { name: 'گُرشاسپ', power: 40, happiness: 50 }, borzin: { name: 'بورزین', power: 30, happiness: 50 }, kian: { name: 'کیان', power: 30, happiness: 50 } },
+    laws: [], researched: [], explorers: [], gameOver: false, dayCounter: 0, speed: 1, paused: false
+};
+
+const camera = { x: 0, y: 0, zoom: 1, speed: 5, minZoom: 0.5, maxZoom: 2, dragging: false, dragStartX: 0, dragStartY: 0, dragStartCamX: 0, dragStartCamY: 0 };
+const DOM = {
+    population: document.getElementById('population'), fuel: document.getElementById('fuel'), food: document.getElementById('food'),
+    wood: document.getElementById('wood'), stone: document.getElementById('stone'), hope: document.getElementById('hope'),
+    satisfaction: document.getElementById('satisfaction'), heat: document.getElementById('heat'), day: document.getElementById('day'),
+    hopeBar: document.getElementById('hopeBar'), satisfactionBar: document.getElementById('satisfactionBar'), heatBar: document.getElementById('heatBar'),
+    eventPanel: document.getElementById('event-panel'), eventTitle: document.getElementById('eventTitle'), eventText: document.getElementById('eventText'),
+    eventIcon: document.getElementById('eventIcon'), eventActions: document.getElementById('eventActions'), eventClose: document.getElementById('eventClose'),
+    notificationContainer: document.getElementById('notification-container'), gameOverOverlay: document.getElementById('gameOverOverlay'),
+    gameOverIcon: document.getElementById('gameOverIcon'), gameOverTitle: document.getElementById('gameOverTitle'), gameOverText: document.getElementById('gameOverText'),
+    currentFire: document.getElementById('currentFire'), fireBar: document.getElementById('fireBar'), speedIcon: document.getElementById('speedIcon'),
+    speedLabel: document.getElementById('speedLabel'), pauseBtn: document.getElementById('pauseBtn')
+};
+
+function createSnow() {
+    const c = document.getElementById('snowParticles');
+    if (!c) return;
+    c.innerHTML = '';
+    const sizes = ['small', 'medium', 'large'];
+    for (let i = 0; i < 120; i++) {
+        const p = document.createElement('div');
+        const size = sizes[Math.floor(Math.random() * sizes.length)];
+        p.className = `snow-particle ${size}`;
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDuration = (Math.random() * 8 + 5) + 's';
+        p.style.animationDelay = (Math.random() * 10) + 's';
+        c.appendChild(p);
+    }
+}
+createSnow();
+
+function drawHouse(ctx, cx, cy) {
+    const w=80,h=50,d=35,roofH=45,logH=7,overhang=8,numLogs=Math.floor(h/logH),wallTopY=cy-h,ridgeY=wallTopY-roofH;
+    ctx.fillStyle='#8b5a2b'; ctx.beginPath(); ctx.moveTo(cx+w/2,cy); ctx.lineTo(cx+w/2+d,cy-d); ctx.lineTo(cx+w/2+d,cy-d-h); ctx.lineTo(cx+w/2,cy-h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#c19a6b'; ctx.fillRect(cx-w/2,cy-h,w,h);
+    ctx.strokeStyle='rgba(80,50,20,0.5)'; ctx.lineWidth=1;
+    for(let i=1;i<numLogs;i++){ let y=cy-i*logH; ctx.beginPath(); ctx.moveTo(cx-w/2,y); ctx.lineTo(cx+w/2,y); ctx.stroke(); let y2=cy-d-i*logH; ctx.beginPath(); ctx.moveTo(cx+w/2,y); ctx.lineTo(cx+w/2+d,y2); ctx.stroke(); }
+    ctx.fillStyle='#3a2210'; ctx.fillRect(cx-12,cy-32,24,32); ctx.fillStyle='#1a1005'; ctx.fillRect(cx-10,cy-30,20,28);
+    ctx.strokeStyle='#000'; ctx.lineWidth=1.5; ctx.strokeRect(cx-12,cy-32,24,32); ctx.beginPath(); ctx.moveTo(cx,cy-32); ctx.lineTo(cx,cy); ctx.stroke();
+    ctx.fillStyle='#f4d03f'; ctx.fillRect(cx+4,cy-18,3,3);
+    ctx.fillStyle='#87ceeb'; ctx.fillRect(cx-35,cy-38,18,18); ctx.strokeStyle='#3a2210'; ctx.lineWidth=2; ctx.strokeRect(cx-35,cy-38,18,18);
+    ctx.beginPath(); ctx.moveTo(cx-26,cy-38); ctx.lineTo(cx-26,cy-20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx-35,cy-29); ctx.lineTo(cx-17,cy-29); ctx.stroke();
+    const fLX=cx-w/2-overhang, fRX=cx+w/2+overhang, fBY=wallTopY, bRX=cx+w/2+overhang+d, bBY=wallTopY-d, rFX=cx, rBX=cx+d, rFY=ridgeY, rBY=ridgeY-d;
+    ctx.fillStyle='#8b0000'; ctx.beginPath(); ctx.moveTo(fRX,fBY); ctx.lineTo(bRX,bBY); ctx.lineTo(rBX,rBY); ctx.lineTo(rFX,rFY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#b22222'; ctx.beginPath(); ctx.moveTo(fLX,fBY); ctx.lineTo(fRX,fBY); ctx.lineTo(rFX,rFY); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(70,0,0,0.6)'; ctx.lineWidth=1.5;
+    for(let i=1;i<5;i++){ let t=i/5, y=fBY+(rFY-fBY)*t, xL=fLX+(rFX-fLX)*t, xR=fRX+(rFX-fRX)*t; ctx.beginPath(); ctx.moveTo(xL,y); ctx.lineTo(xR,y); ctx.stroke(); }
+    ctx.strokeStyle='rgba(50,0,0,0.6)';
+    for(let i=1;i<4;i++){ let t=i/4, x1=fRX+(bRX-fRX)*t, y1=fBY+(bBY-fBY)*t, x2=rFX+(rBX-rFX)*t, y2=rFY+(rBY-rFY)*t; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+    ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(rFX,rFY); ctx.lineTo(rBX,rBY); ctx.moveTo(fLX,fBY); ctx.lineTo(fRX,fBY); ctx.lineTo(bRX,bBY); ctx.lineTo(rBX,rBY); ctx.moveTo(fLX,fBY); ctx.lineTo(rFX,rFY); ctx.lineTo(fRX,fBY); ctx.stroke();
+    const cW=12,cD=6,cH=28,cX=cx+25, rDx=bRX-rFX, rDy=bBY-rFY, tC=(cX-rFX)/rDx, cBY=rFY+rDy*tC+6;
+    ctx.fillStyle='#8b5a2b'; ctx.fillRect(cX-cW/2,cBY-cH,cW,cH); ctx.strokeStyle='rgba(60,30,10,0.5)'; ctx.lineWidth=1;
+    for(let i=1;i<4;i++){ let y=cBY-cH+(cH/4)*i; ctx.beginPath(); ctx.moveTo(cX-cW/2,y); ctx.lineTo(cX+cW/2,y); ctx.stroke(); }
+    ctx.fillStyle='#5a2d0c'; ctx.beginPath(); ctx.moveTo(cX+cW/2,cBY-cH); ctx.lineTo(cX+cW/2+cD,cBY-cH-cD); ctx.lineTo(cX+cW/2+cD,cBY-cD); ctx.lineTo(cX+cW/2,cBY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#c19a6b'; ctx.beginPath(); ctx.moveTo(cX-cW/2,cBY-cH); ctx.lineTo(cX+cW/2,cBY-cH); ctx.lineTo(cX+cW/2+cD,cBY-cH-cD); ctx.lineTo(cX-cW/2+cD,cBY-cH-cD); ctx.closePath(); ctx.fill();
+}
+
+function drawMap() {
+    const canvas=document.getElementById('gameMap'); if(!canvas) return;
+    const ctx=canvas.getContext('2d'); const container=document.getElementById('map-container'); if(!container) return;
+    const rect=container.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; let width=rect.width, height=rect.height;
+    if(width<10||height<10){ width=window.innerWidth; height=window.innerHeight-132; }
+    canvas.width=width*dpr; canvas.height=height*dpr; canvas.style.width=width+'px'; canvas.style.height=height+'px'; ctx.scale(dpr,dpr);
+    const mW=3000,mH=3000; camera.x=Math.max(0,Math.min(mW-width/camera.zoom,camera.x)); camera.y=Math.max(0,Math.min(mH-height/camera.zoom,camera.y));
+    ctx.save(); ctx.translate(-camera.x*camera.zoom,-camera.y*camera.zoom); ctx.scale(camera.zoom,camera.zoom);
+    ctx.fillStyle='#e8f0f5'; ctx.fillRect(0,0,mW,mH);
+    for(let i=0;i<400;i++){ const x=(Math.abs(Math.sin(i*12.9898)*43758.5453)%1)*mW; const y=(Math.abs(Math.sin(i*78.233)*43758.5453)%1)*mH; ctx.fillStyle=i%2===0?'rgba(174,214,241,0.3)':'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x,y,60+(i%30),40+(i%20),0,0,Math.PI*2); ctx.fill(); }
+    const cX=mW/2, cY=mH/2; drawHouse(ctx,cX-260,cY); drawHouse(ctx,cX,cY); drawHouse(ctx,cX+260,cY);
+    function dT(x,y){ ctx.fillStyle='rgba(100,120,140,0.3)'; ctx.beginPath(); ctx.ellipse(x+10,y+5,25,12,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#3e2723'; ctx.fillRect(x-6,y-40,12,45); ctx.fillStyle='#1b5e20'; ctx.beginPath(); ctx.moveTo(x,y-100); ctx.lineTo(x-30,y-40); ctx.lineTo(x+30,y-40); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(x,y-70); ctx.lineTo(x-40,y-10); ctx.lineTo(x+40,y-10); ctx.closePath(); ctx.fill(); ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.moveTo(x,y-100); ctx.lineTo(x-15,y-55); ctx.lineTo(x+15,y-55); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(x,y-70); ctx.lineTo(x-20,y-20); ctx.lineTo(x+20,y-20); ctx.closePath(); ctx.fill(); }
+    function dR(x,y){ ctx.fillStyle='rgba(100,120,140,0.3)'; ctx.beginPath(); ctx.ellipse(x+5,y+5,18,10,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#607d8b'; ctx.beginPath(); ctx.moveTo(x-18,y); ctx.lineTo(x-12,y-20); ctx.lineTo(x+6,y-24); ctx.lineTo(x+18,y-6); ctx.lineTo(x+12,y+6); ctx.closePath(); ctx.fill(); ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.moveTo(x-12,y-20); ctx.lineTo(x+6,y-24); ctx.lineTo(x-2,y-14); ctx.closePath(); ctx.fill(); }
+    const dec=[{x:600,y:600,t:'t'},{x:750,y:1200,t:'r'},{x:450,y:1800,t:'t'},{x:2400,y:750,t:'t'},{x:2250,y:1350,t:'r'},{x:2550,y:1950,t:'t'},{x:1200,y:2400,t:'t'},{x:1800,y:2250,t:'r'},{x:900,y:2550,t:'t'},{x:300,y:1500,t:'r'},{x:2700,y:1500,t:'t'},{x:1500,y:300,t:'r'},{x:675,y:2175,t:'t'},{x:2325,y:525,t:'r'},{x:1500,y:2700,t:'t'},{x:2700,y:2700,t:'r'},{x:300,y:300,t:'t'},{x:1000,y:500,t:'t'},{x:2000,y:2500,t:'r'},{x:500,y:1000,t:'t'},{x:2500,y:1000,t:'t'},{x:1000,y:2000,t:'r'}];
+    dec.forEach(d=> d.t==='t'?dT(d.x,d.y):dR(d.x,d.y));
+    ctx.restore(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font='11px Vazirmatn'; ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillText(`📍 (${Math.floor(camera.x)}, ${Math.floor(camera.y)}) | 🔍 ${(camera.zoom*100).toFixed(0)}%`,10,height-10);
+}
+
+const keys={w:false,a:false,s:false,d:false};
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d'].includes(k)){e.preventDefault();keys[k]=true;}});
+document.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(['w','a','s','d'].includes(k))keys[k]=false;});
+function updateCamera(){const s=camera.speed/camera.zoom;if(keys.w)camera.y-=s;if(keys.s)camera.y+=s;if(keys.a)camera.x-=s;if(keys.d)camera.x+=s;}
+function setupMouseControls(){const c=document.getElementById('gameMap');if(!c)return;c.addEventListener('mousedown',e=>{camera.dragging=true;camera.dragStartX=e.clientX;camera.dragStartY=e.clientY;camera.dragStartCamX=camera.x;camera.dragStartCamY=camera.y;c.style.cursor='grabbing';});window.addEventListener('mousemove',e=>{if(camera.dragging){camera.x=camera.dragStartCamX-(e.clientX-camera.dragStartX)/camera.zoom;camera.y=camera.dragStartCamY-(e.clientY-camera.dragStartY)/camera.zoom;}});window.addEventListener('mouseup',()=>{camera.dragging=false;c.style.cursor='grab';});c.addEventListener('wheel',e=>{e.preventDefault();camera.zoom=Math.max(camera.minZoom,Math.min(camera.maxZoom,camera.zoom+(e.deltaY>0?-0.05:0.05)));},{passive:false});}
+let mapAnimId=null,fc=0;function startMapAnim(){if(mapAnimId)cancelAnimationFrame(mapAnimId);function a(){const gs=document.getElementById('game-screen');if(gs&&gs.style.display!=='none'){updateCamera();fc++;if(fc%2===0)drawMap();}mapAnimId=requestAnimationFrame(a);}a();}
+window.addEventListener('resize',()=>{const gs=document.getElementById('game-screen');if(gs&&gs.style.display!=='none')drawMap();});
+
+function showStoryScreen(){document.getElementById('menu-screen').style.display='none';let s=document.getElementById('story-screen');if(!s){s=document.createElement('div');s.id='story-screen';s.innerHTML=`<div class="story-container"><h2>📖 پیشینه</h2><p class="story-text">یک ماه پیش، یک شهاب‌سنگ به اقیانوسِ شمالی برخورد کرد و گردوغبارِ حاصل از آن، آنقدر ضخیم بود که خورشید را به یک نقطهٔ سفیدِ سرد تبدیل کرد. در کمتر از یک سال، برف، تمامِ ایران را تا سقفِ خانه‌ها پوشاند.<br><br>اما در دلِ کوهِ دماوند، یک رازِ طبیعی وجود داشت؛ چشمه‌های آبِ گرمی که از اعماقِ زمین می‌جوشیدند و هیچ‌وقت یخ نمی‌زدند. من، که نقشه‌بردارِ یک شرکتِ نفت بودم، مسیرِ این چشمه‌ها را از رویِ نقشه‌هایِ قدیمی پیدا کردم و همراه با چهار بازماندهٔ دیگر، خودمان را به آن دره رساندیم.<br><br>با لوله‌هایِ زنگ‌زدهٔ یک نیروگاهِ متروکه، یک سیستمِ گرمایشیِ ساده ساختیم و زندگی جدیدی را آغاز کردیم. از همان روز اول، آن چهار نفر به من اعتماد کردند؛ چون من بودم که مسیر را پیدا کردم و آنها را به این نقطهٔ امن رساندم.<br><br>حالا، من رئیسِ این گروهِ کوچک هستم و باید این گروه کوچک را اداره کنم...</p><button class="story-btn" onclick="startActualGame()">آغاز مدیریت</button></div>`;document.body.appendChild(s);}s.style.display='flex';}
+function startActualGame(){let s=document.getElementById('story-screen');if(s)s.style.display='none';document.getElementById('game-screen').style.display='block';camera.x=1500-(window.innerWidth/2);camera.y=1500-((window.innerHeight-132)/2);camera.zoom=1;Object.assign(gameState,{day:1,population:5,maxPopulation:200,fuel:5,maxFuel:500,food:15,maxFood:400,wood:20,stone:10,hope:30,satisfaction:50,heat:5,fireIntensity:20,buildings:{oil_well:0,house:0,farm:0,workshop:0,wall:0},factions:{garshasp:{name:'گُرشاسپ',power:40,happiness:50},borzin:{name:'بورزین',power:30,happiness:50},kian:{name:'کیان',power:30,happiness:50}},laws:[],researched:[],explorers:[],gameOver:false,dayCounter:0,speed:1,paused:false});document.querySelectorAll('.fire-option').forEach(el=>el.classList.toggle('active',parseInt(el.dataset.fire)===20));DOM.gameOverOverlay.style.display='none';closeAllPanels();updateUI();showEvent('🔥 خوش آمدی رئیس!','شهر در دست توست. دوستانت به تو امید بسته‌اند.\n\n📌 بروی دکمه‌ها کلیک کن و ساختمان‌ها رو بساز.\n📌 هر روز رو با دکمهٔ «روز بعد» جلو ببر.\n\n🎮 حرکت با WASD و برای زوم کردن اسکرول موس را حرکت بده',[],'🔥');setupMouseControls();setTimeout(()=>{drawMap();startMapAnim();},300);}
+function initGame(){document.getElementById('startBtn').onclick=()=>showStoryScreen();}
+window.onload=initGame;
+
+function updateUI(){
+    if(DOM.population)DOM.population.textContent=gameState.population;
+    if(DOM.fuel)DOM.fuel.textContent=Math.floor(gameState.fuel);
+    if(DOM.food)DOM.food.textContent=Math.floor(gameState.food);
+    if(DOM.wood)DOM.wood.textContent=Math.floor(gameState.wood);
+    if(DOM.stone)DOM.stone.textContent=Math.floor(gameState.stone);
+    if(DOM.hope)DOM.hope.textContent=Math.floor(gameState.hope)+'%';
+    if(DOM.satisfaction)DOM.satisfaction.textContent=Math.floor(gameState.satisfaction)+'%';
+    if(DOM.heat)DOM.heat.textContent=Math.floor(gameState.heat)+'%';
+    if(DOM.day)DOM.day.textContent=gameState.day;
+    if(DOM.hopeBar)DOM.hopeBar.style.width=Math.min(100,gameState.hope)+'%';
+    if(DOM.satisfactionBar)DOM.satisfactionBar.style.width=Math.min(100,gameState.satisfaction)+'%';
+    if(DOM.heatBar)DOM.heatBar.style.width=Math.min(100,gameState.heat)+'%';
+    if(DOM.hopeBar)DOM.hopeBar.style.background=gameState.hope>50?'#2ecc71':'#f4a460';
+    if(DOM.satisfactionBar)DOM.satisfactionBar.style.background=gameState.satisfaction>50?'#2ecc71':'#e74c3c';
+    if(DOM.heatBar)DOM.heatBar.style.background=gameState.heat<20?'#3498db':'#e74c3c';
+    if(DOM.currentFire)DOM.currentFire.textContent=gameState.fireIntensity;
+    if(DOM.fireBar)DOM.fireBar.style.width=(gameState.fireIntensity/50)*100+'%';
+}
+function showNotification(t,y='info'){const c=DOM.notificationContainer;if(!c)return;const e=document.createElement('div');e.className=`notification ${y}`;e.textContent=t;c.appendChild(e);setTimeout(()=>{if(e.parentNode)e.remove();},3000);}
+function showEvent(t,tx,a=[],i='📌'){DOM.eventIcon.textContent=i;DOM.eventTitle.textContent=t;DOM.eventText.textContent=tx;DOM.eventActions.innerHTML='';a.forEach(ac=>{const b=document.createElement('button');b.textContent=ac.label;b.className=ac.class||'btn-neutral';b.onclick=()=>{ac.callback();if(!gameState.gameOver)closeEventPanel();updateUI();};DOM.eventActions.appendChild(b);});DOM.eventPanel.className='event-panel-visible';}
+function closeEventPanel(){DOM.eventPanel.className='event-panel-hidden';}
+function closeAllPanels(){document.querySelectorAll('.floating-panel').forEach(p=>p.classList.remove('panel-open'));}
+function togglePanel(id){const p=document.getElementById(id);if(!p)return;const o=p.classList.contains('panel-open');closeAllPanels();if(!o)p.classList.add('panel-open');closeEventPanel();}
+function nextDay(){if(gameState.gameOver||gameState.paused)return;gameState.day++;gameState.dayCounter++;gameState.fuel-=gameState.fireIntensity;gameState.food-=Math.floor(gameState.population*0.25);gameState.fuel+=gameState.buildings.oil_well*8;gameState.food+=gameState.buildings.farm*5;gameState.satisfaction-=1.5;if(gameState.satisfaction>60&&gameState.food>20&&gameState.population<gameState.maxPopulation)gameState.population+=1;if(gameState.satisfaction<25||gameState.food<5)gameState.population-=Math.floor(Math.random()*2)+1;gameState.satisfaction=Math.max(0,Math.min(100,gameState.satisfaction));gameState.fuel=Math.max(0,gameState.fuel);gameState.food=Math.max(0,gameState.food);gameState.population=Math.max(0,gameState.population);updateUI();if(checkGameOver())return;if(gameState.dayCounter%3===0)triggerRandomEvent();else showEvent(`📅 روز ${gameState.day}`,`جمعیت: ${gameState.population} | سوخت: ${Math.floor(gameState.fuel)} | غذا: ${Math.floor(gameState.food)}`,[],'📅');if(gameState.day>=30){gameState.gameOver=true;showGameOver('🏆','پیروزی بزرگ!','شهر زنده ماند و آتش جاویدان شد!');}showNotification(`⏩ روز ${gameState.day} آغاز شد`,'success');}
+function checkGameOver(){if(gameState.population<=0){gameState.gameOver=true;showGameOver('💀','فاجعه!','همه جان باختند...');return true;}if(gameState.fuel<=0&&gameState.fireIntensity>0){gameState.gameOver=true;showGameOver('❄️','شهر یخ زد!','آتشکده خاموش شد.');return true;}if(gameState.satisfaction<5){gameState.gameOver=true;showGameOver('🔥','شورش!','مردم شورش کردند...');return true;}return false;}
+function showGameOver(i,t,tx){DOM.gameOverIcon.textContent=i;DOM.gameOverTitle.textContent=t;DOM.gameOverText.textContent=tx;DOM.gameOverOverlay.style.display='flex';}
+function triggerRandomEvent(){const e=[{title:'❄️ حمله!',text:'موجودات برفی حمله کردند!',icon:'⚔️',actions:[{label:'⚔️ دفاع',class:'btn-accept',callback:()=>{const l=Math.floor(Math.random()*3)+1;gameState.population-=l;gameState.hope+=5;showNotification(`${l} نفر کشته شدند.`,'warning');}},{label:'🧱 دیوار',class:'btn-neutral',callback:()=>{gameState.wood-=15;gameState.buildings.wall=(gameState.buildings.wall||0)+1;showNotification('دیوارها مستحکم شدند.','success');}}]},{title:'🌾 کمبود غذا!',text:'غذا رو به اتمام است.',icon:'🍞',actions:[{label:'📉 جیره‌بندی',class:'btn-accept',callback:()=>{gameState.food+=15;gameState.satisfaction-=10;showNotification('جیره‌بندی اعمال شد.','warning');}},{label:'🎣 شکار',class:'btn-neutral',callback:()=>{if(Math.random()<0.3){gameState.population-=2;showNotification('شکارچیان مردند!','warning');}else{gameState.food+=25;showNotification('شکارچیان بازگشتند!','success');}}}]}];const ev=e[Math.floor(Math.random()*e.length)];showEvent(ev.title,ev.text,ev.actions,ev.icon);}
+function buildBuilding(t,cW,cS){if(gameState.gameOver)return;if(gameState.wood<cW||gameState.stone<cS){showNotification('منابع کافی نیست!','warning');return;}gameState.wood-=cW;gameState.stone-=cS;gameState.buildings[t]=(gameState.buildings[t]||0)+1;showNotification(`✅ ساخته شد!`,'success');updateUI();}
+function setFireIntensity(v){gameState.fireIntensity=v;document.querySelectorAll('.fire-option').forEach(el=>el.classList.toggle('active',parseInt(el.dataset.fire)===v));showNotification(`🔥 شدت آتش: ${v}`,'info');updateUI();}
+function explore(l,cF,cFo){if(gameState.gameOver)return;if(gameState.fuel<cF||gameState.food<cFo){showNotification('منابع کافی نیست!','warning');return;}gameState.fuel-=cF;gameState.food-=cFo;const o={mountains:[{msg:'+۵۰ سوخت',effect:()=>gameState.fuel+=50},{msg:'-۵ نفر',effect:()=>gameState.population-=5}],desert:[{msg:'+۲۰ چوب و سنگ',effect:()=>{gameState.wood+=20;gameState.stone+=20;}},{msg:'امید +۱۰',effect:()=>gameState.hope+=10}],caves:[{msg:'+۴۰ غذا',effect:()=>gameState.food+=40},{msg:'جمعیت +۵',effect:()=>gameState.population+=5}]};const r=o[l][Math.floor(Math.random()*o[l].length)];r.effect();showNotification(r.msg,'info');updateUI();}
+function research(t,cW,cS){if(gameState.gameOver)return;if(gameState.wood<cW||gameState.stone<cS){showNotification('منابع کافی نیست!','warning');return;}if(gameState.researched.includes(t)){showNotification('قبلاً کشف شده!','warning');return;}gameState.wood-=cW;gameState.stone-=cS;gameState.researched.push(t);showNotification(`🔬 کشف شد!`,'success');updateUI();}
+function toggleSpeed(){const s=[{value:1,icon:'▶️',label:'عادی'},{value:2,icon:'⏩',label:'سریع'},{value:4,icon:'⏩⏩',label:'خیلی سریع'},{value:0.5,icon:'⏪',label:'کند'}];let i=s.findIndex(x=>x.value===gameState.speed);if(i===-1)i=0;const n=s[(i+1)%s.length];gameState.speed=n.value;if(DOM.speedIcon)DOM.speedIcon.textContent=n.icon;if(DOM.speedLabel)DOM.speedLabel.textContent=n.label;showNotification(`سرعت: ${n.label}`,'info');}
+function togglePause(){gameState.paused=!gameState.paused;if(DOM.pauseBtn)DOM.pauseBtn.innerHTML=gameState.paused?'▶️':'⏸️';showNotification(gameState.paused?'متوقف شد':'ادامه یافت','info');}
+function enactLaw(l){const laws={rationing:{effect:()=>{gameState.food+=15;gameState.satisfaction-=8;},msg:'جیره‌بندی'},extraFood:{effect:()=>{gameState.food-=15;gameState.satisfaction+=12;},msg:'سهمیه نان'},forcedLabor:{effect:()=>{gameState.satisfaction-=12;},msg:'کار اجباری'},nowruz:{effect:()=>{gameState.food-=10;gameState.hope+=18;},msg:'جشن نوروز'}};const d=laws[l];if(!d)return;d.effect();gameState.laws.push(l);showNotification(`📜 ${d.msg} اعمال شد!`,'info');updateUI();}
