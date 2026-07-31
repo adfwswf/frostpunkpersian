@@ -1,9 +1,11 @@
 // === تنظیمات قابل تغییر توسط شما (فقط این اعداد را تغییر دهید) ===
 const PERSPECTIVE_Y = 0.6;        // زاویه شش ضلعی ها
-const HOUSE_SCALE = 1.5;          // بزرگنمایی خانه و نیروگاه
+const HOUSE_SCALE = 1.1;          // بزرگنمایی خانه
+const POWERPLANT_SCALE = 1.2;     // بزرگنمایی نیروگاه
 const BASE_Y_RATIO = 0.85;        // موقعیت پایه ساختمان ها
 const HOUSE_OFFSET_X = 0;         // جابجایی چپ و راست
-const HOUSE_OFFSET_Y = 3;         // جابجایی بالا و پایین
+const HOUSE_OFFSET_Y = 25;        // جابجایی بالا و پایین خانه
+const POWERPLANT_OFFSET_Y = 10;   // جابجایی بالا و پایین نیروگاه
 const MUSIC_START_TIME = 15;      // ثانیه شروع موسیقی
 // =================================================================
 
@@ -11,10 +13,10 @@ let bgMusic = null;
 
 const gameState = {
     day: 1, population: 5, fuel: 5, food: 30, wood: 20, stone: 20, heat: 0, hope: 30, satisfaction: 50,
-    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, mouseX: 0, mouseY: 0,
+    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, mouseX: 0, mouseY: 0,
     buildings: [], constructionSites: [], obstacles: [], clearingSites: [],
     hexes: [], hexSize: 45, clickedHex: null,
-    HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0 }],
+    HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }],
     POWERPLANT_HEXES: [], 
     tutorialStep: -1, 
     unlockedHexes: [],
@@ -22,6 +24,7 @@ const gameState = {
     moveSource: null,
     moveAmount: 0,
     expeditions: [],
+    migrantRequests: [],
     pendingUnlockTarget: null,
     keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' },
     rebindingKey: null,
@@ -45,6 +48,28 @@ window.startTutorial = function(val) {
     if (!val && box) box.style.display = 'none';
     if (val) updateTutorialBox();
 }
+
+function acceptWaitingMigrants(id) {
+    let req = gameState.migrantRequests.find(r => r.id === id);
+    if (req) {
+        startPlacingMigrants(req.count);
+        gameState.migrantRequests = gameState.migrantRequests.filter(r => r.id !== id);
+        
+        let tracker = document.getElementById('requestTrackerBody');
+        if (tracker) {
+            let divToRemove = tracker.querySelector(`[data-req-id="req_${id}"]`);
+            if (divToRemove) divToRemove.remove();
+            
+            if (gameState.migrantRequests.length === 0 && !tracker.querySelector('.no-req-msg')) {
+                tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>';
+            }
+        }
+        
+        let panel = document.getElementById('panelRequests');
+        if(panel) panel.classList.remove('panel-open');
+    }
+}
+window.acceptWaitingMigrants = acceptWaitingMigrants;
 
 function createEmbers() {
     const c = document.getElementById('heroCanvas'); if (!c) return;
@@ -148,10 +173,11 @@ function drawMap() {
                     gameState.POWERPLANT_HEXES.push({ q: site.q, r: site.r });
                     showNotification("✅ نیروگاه جدید ساخته شد!", "success");
                 } else {
-                    gameState.HOUSE_HEXES.push({ q: site.q, r: site.r, pop: 0, daysOvercrowded: 0, lastReceived: 0 });
+                    gameState.HOUSE_HEXES.push({ q: site.q, r: site.r, pop: 0, daysOvercrowded: 0, lastReceived: 0, receivedToday: false });
                     showNotification("✅ خونه جدید ساخته شد!", "success");
                 }
                 site.completed = true;
+                updateUI(); 
             }
             return false;
         }
@@ -180,7 +206,7 @@ function drawMap() {
             ctx.drawImage(houseImg, drawX, drawY, imgW, imgH);
 
             const popText = `${houseData.pop}`;
-            ctx.font = 'bold 13px Vazirmatn';
+            ctx.font = "bold 13px 'Vazirmatn', sans-serif";
             const textWidth = ctx.measureText(popText).width;
             const pillW = textWidth + 30;
             const pillH = 22;
@@ -203,14 +229,14 @@ function drawMap() {
             ctx.lineWidth = 1.5;
             ctx.stroke();
             
+            ctx.font = "12px Arial";
             ctx.fillStyle = '#f4d03f';
-            ctx.font = '12px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText('👤', pillX + 6, pillY + pillH/2 + 1);
             
+            ctx.font = "bold 13px 'Vazirmatn', sans-serif";
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 13px Vazirmatn';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(popText, pillX + pillW/2 + 6, pillY + pillH/2 + 1);
@@ -218,8 +244,8 @@ function drawMap() {
         }
 
         if (isPP && powerplantImg.complete && powerplantImg.naturalHeight !== 0) {
-            let imgW = hexW * HOUSE_SCALE, imgH = imgW * (powerplantImg.naturalHeight / powerplantImg.naturalWidth);
-            let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + HOUSE_OFFSET_Y; 
+            let imgW = hexW * POWERPLANT_SCALE, imgH = imgW * (powerplantImg.naturalHeight / powerplantImg.naturalWidth);
+            let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + POWERPLANT_OFFSET_Y; 
             ctx.drawImage(powerplantImg, drawX, drawY, imgW, imgH);
         }
 
@@ -239,8 +265,8 @@ function drawMap() {
             ctx.strokeStyle = '#f4d03f';
             ctx.stroke();
 
+            ctx.font = "bold 14px 'Vazirmatn', sans-serif";
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 14px Vazirmatn';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(timeLeft + 's', hex.x, hex.y);
@@ -249,12 +275,14 @@ function drawMap() {
 
     if (gameState.isPlacing) {
         let imgToDraw = gameState.placingType === 'powerplant' ? powerplantImg : houseImg;
+        let currentScale = gameState.placingType === 'powerplant' ? POWERPLANT_SCALE : HOUSE_SCALE;
+        let currentOffsetY = gameState.placingType === 'powerplant' ? POWERPLANT_OFFSET_Y : HOUSE_OFFSET_Y;
         if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) {
             let targetHex = getHoveredHex(gameState.mouseX, gameState.mouseY);
             let hex = gameState.hexes.find(h => h.q === targetHex.q && h.r === targetHex.r);
             if (hex) {
-                let imgW = hexW * HOUSE_SCALE, imgH = imgW * (imgToDraw.naturalHeight / imgToDraw.naturalWidth);
-                let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + HOUSE_OFFSET_Y; 
+                let imgW = hexW * currentScale, imgH = imgW * (imgToDraw.naturalHeight / imgToDraw.naturalWidth);
+                let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + currentOffsetY; 
                 ctx.globalAlpha = 0.6; ctx.drawImage(imgToDraw, drawX, drawY, imgW, imgH); ctx.globalAlpha = 1;
             }
         }
@@ -262,7 +290,10 @@ function drawMap() {
 
     ctx.restore();
     
-    if (!gameState.isPaused) updateExpeditions();
+    if (!gameState.isPaused) {
+        updateExpeditions();
+        updateRequests();
+    }
 }
 
 function setupControls() {
@@ -389,6 +420,18 @@ function updateBindTexts() {
     document.getElementById('bindRight').innerText = gameState.keyBindings.right.replace('Key', '');
 }
 
+function calculateCanFit(count) {
+    let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
+    let totalCapacity = gameState.HOUSE_HEXES.length * 3;
+    return (totalCapacity - totalPop) >= count;
+}
+
+function startPlacingMigrants(count) {
+    gameState.isPlacingMigrants = true;
+    gameState.migrantsToPlace = count;
+    showNotification(`${count} مهاجر وارد شد. روی خونه‌ها کلیک کن تا مستقر شوند.`, "info");
+}
+
 function handleMapClick() {
     const target = getHoveredHex(gameState.mouseX, gameState.mouseY);
     let dist = hexDistance(target, { q: 0, r: 0 });
@@ -398,32 +441,61 @@ function handleMapClick() {
     let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r);
     let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
 
+    if (gameState.isPlacingMigrants) {
+        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
+        if (destHouse && destHouse.pop < 5) {
+            destHouse.pop++;
+            gameState.migrantsToPlace--;
+            updateUI();
+            if (gameState.migrantsToPlace === 0) {
+                gameState.isPlacingMigrants = false;
+                let overPopulated = gameState.HOUSE_HEXES.some(h => h.pop > 3);
+                if (overPopulated) {
+                    gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+                    showNotification("خونه‌ها شلوغ شد! ۱ درصد رضایت کم شد.", "warning");
+                } else {
+                    gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+                    showNotification("میزبانی خوبی بود! ۱ درصد رضایت بیشتر شد.", "success");
+                }
+                updateUI();
+            }
+        } else {
+            showNotification("ظرفیت این خانه پر است!", "warning");
+        }
+        return;
+    }
+
     if (gameState.isMovingPop) {
         let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
         let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q && h.r === gameState.moveSource.r);
         
         if (destHouse && sourceHouse && destHouse !== sourceHouse) {
-            const now = Date.now();
-            const FIVE_DAYS_MS = 5 * 60 * 1000; 
-            
-            if (sourceHouse.lastReceived && (now - sourceHouse.lastReceived < FIVE_DAYS_MS)) {
+            if (destHouse.pop + gameState.moveAmount > 5) {
+                showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning");
+                gameState.isMovingPop = false;
+                return;
+            }
+
+            if (sourceHouse.pop < destHouse.pop) {
+                showNotification("جابه‌جایی نامناسب! یک درصد رضایت کم شد.", "warning");
+                gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+                updateUI();
+                gameState.isMovingPop = false;
+                return;
+            }
+
+            if (sourceHouse.receivedToday) {
                 showAngryMoveModal();
                 gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
-                sourceHouse.lastReceived = 0; 
-            } else {
-                if (sourceHouse.pop < destHouse.pop) {
-                    gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
-                    showNotification(LANG[gameState.currentLang].moveFail, "warning");
-                } else {
-                    gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
-                    showNotification(LANG[gameState.currentLang].moveSuccess, "success");
-                }
+                sourceHouse.receivedToday = false; 
+                updateUI();
+                gameState.isMovingPop = false;
+                return;
             }
-            
+
             sourceHouse.pop -= gameState.moveAmount;
             destHouse.pop += gameState.moveAmount;
-            destHouse.lastReceived = now; 
-            destHouse.daysOvercrowded = 0;
+            destHouse.receivedToday = true; 
             
             updateUI();
             gameState.isMovingPop = false;
@@ -438,13 +510,14 @@ function handleMapClick() {
         return;
     }
 
-    // کلیک روی خانه برای انتقال جمعیت
     if (isHouse && !gameState.isPlacing) {
         let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
-        if (house.pop > 1) {
+        let isMainHouse = (house.q === 0 && house.r === 0);
+        let maxTransferable = isMainHouse ? house.pop - 1 : house.pop;
+        
+        if (maxTransferable > 0) {
             if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) {
                 gameState.moveSource = target;
-                let maxTransferable = house.pop - 1; 
                 openMovePopPanel(maxTransferable);
                 if (gameState.tutorialStep === 14) {
                     gameState.tutorialStep = 15;
@@ -454,12 +527,11 @@ function handleMapClick() {
                 showNotification("لطفاً طبق آموزش پیش برو!", "warning");
             }
         } else {
-            showNotification(LANG[gameState.currentLang].emptyHouse, "info");
+            showNotification("آدمی برای انتقال در این خانه نیست!", "info");
         }
         return;
     }
 
-    // باز کردن قفل
     if (isLocked && !isUnlocked && !isHouse && !isPP && !isOccupied) {
         const neighbors = [
             { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r },
@@ -485,7 +557,6 @@ function handleMapClick() {
             return;
         }
 
-        // شرط خاص آموزش برای نیروگاه (کنار خونه نباشد)
         if (gameState.tutorialStep === 9) {
             let isAdjacentToHouse = false;
             for (let h of gameState.HOUSE_HEXES) {
@@ -502,7 +573,6 @@ function handleMapClick() {
         return;
     }
 
-    // ساخت و ساز
     if (gameState.isPlacing) {
         if (isHouse || isPP || isOccupied) { 
             showNotification(LANG[gameState.currentLang].occupied, "warning"); return; 
@@ -554,14 +624,12 @@ function handleMapClick() {
         return;
     }
 
-    // ارورهای آموزش در صورت کلیک جای اشتباه
     if (gameState.tutorialStep > 0) {
         if (gameState.tutorialStep === 1 || gameState.tutorialStep === 9) showNotification("روی یکی از خانه‌های قفل‌شده کلیک کن!", "warning");
         else if (gameState.tutorialStep === 2 || gameState.tutorialStep === 10) showNotification("حالا روی دکمه «ساخت و ساز» کلیک کن!", "warning");
         else if (gameState.tutorialStep === 3 || gameState.tutorialStep === 11) showNotification("روی دکمه «ساخت» کلیک کن!", "warning");
         else if (gameState.tutorialStep === 4 || gameState.tutorialStep === 12) showNotification("روی زمینی که قفلش رو باز کردی کلیک کن!", "warning");
-        else if (gameState.tutorialStep === 6) showNotification("روی دکمه «اکتشاف» کلیک کن!", "warning");
-        else if (gameState.tutorialStep === 7) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning");
+        else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning");
         else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning");
         else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning");
         else showNotification("لطفاً طبق آموزش پیش برو!", "warning");
@@ -575,32 +643,32 @@ const LANG = {
         video: "ویدیو", audio: "صدا", controls: "کنترل ها", selectLang: "انتخاب زبان:", musicVol: "صدای موسیقی:",
         mute: "قطع صدا", unmute: "پخش صدا", rebindTxt: "برای تغییر دکمه، روی آن کلیک کنید و دکمه جدید را فشار دهید.",
         up: "حرکت به بالا", down: "حرکت به پایین", left: "حرکت به چپ", right: "حرکت به راست", back: "بازگشت",
-        explore: "اکتشاف", build: "ساخت و ساز", movePop: "انتقال جمعیت", buildHouse: "ساخت خانه جدید", buildBtn: "ساخت", surveyBtn: "نظر سنجی",
+        explore: "اکتشاف", build: "ساخت و ساز", movePop: "انتقال جمعیت", buildHouse: "ساخت خانه جدید", buildBtn: "ساخت",
         close: "✕", cancel: "انصراف", moveBtn: "انتقال", movePrompt: "چند نفر منتقل شوند؟", dispatchTroops: "اعزام نیرو",
         unlockTitle: "باز کردن قفل", unlockQ: "آیا می‌خواهید این قفل را باز کنید؟", unlockCost: "این کار ۱۰ سنگ هزینه دارد.", unlockYes: "بله، باز کن",
-        resultTitle: "گزارش اکتشاف", resultRegion: "منطقه:", resultCasualties: "تلفات:", resultRes: "گزارش منابع:", resultNone: "هیچ منبعی به دست نیامد.", collect: "دریافت",
-        houseBuilt: "✅ خونه جدید ساخته شد!", buildCancel: "ساخت لغو شد", moveCancel: "انتقال لغو شد", moveSuccess: "جابه‌جایی موفق بود! ۱ درصد رضایت بیشتر شد.",
-        moveFail: "جابه‌جایی نامناسب! ۱ درصد رضایت کمتر شد.", moved: "نفر منتقل شدند.", emptyHouse: "حداقل یک نفر (خودت) باید تو خونه بمونه!", noAdjacent: "برای باز کردن این قفل، باید یک منطقه باز در کنارش داشته باشید!", followTut: "فعلاً طبق آموزش پیش برو!",
+        resultTitle: "گزارش اکتشاف", resultRegion: "منطقه:", resultCasualties: "تلفات:", resultRes: "گزارش منابع:", resultNone: "منابع دریافت نکردید", collect: "دریافت",
+        houseBuilt: "✅ خونه جدید ساخته شد!", buildCancel: "ساخت لغو شد", moveCancel: "انتقال لغو شد", moveSuccess: "جابه‌جایی موفق بود!",
+        moveFail: "جابه‌جایی نامناسب!", moved: "نفر منتقل شدند.", emptyHouse: "آدمی برای انتقال نیست!", noAdjacent: "برای باز کردن این قفل، باید یک منطقه باز در کنارش داشته باشید!", followTut: "فعلاً طبق آموزش پیش برو!",
         buildStart: "خونه در حال ساخت است و ۱۰ چوب کم شد!", noWood: "چوب کافی نداری!", clickUnlocked: "روی خونه‌ای که قفلش رو باز کردی کلیک کن!",
-        lockedArea: "این منطقه قفل است!", tooClose: "نمیتوانید به خانه‌های دیگر بچسبانید!", occupied: "در این مکان در حال ساخت است!", buildTimer: "خونه تا ۳۰ ثانیه دیگر ساخته می‌شود",
+        lockedArea: "این منطقه قفل است!", tooClose: "نمیتوانید به خانه‌های دیگر بچسبانید!", occupied: "در این مکان در حال ساخت است!",
         keyBindSuccess: "کلید با موفقیت تنظیم شد!", langChanged: "زبان به فارسی تغییر یافت", risk: "مقدار تلفات", reward: "پاداش هر بازگشته", dispatchBtn: "اعزام نیرو",
-        wood: "چوب", stone: "سنگ", food: "غذا", fuel: "سوخت", dispatchNotif: "نفر به"
+        wood: "چوب", stone: "سنگ", food: "غذا", fuel: "سوخت", dispatchNotif: "نفر به", temp: "دما"
     },
     en: {
         resume: "Resume", settings: "Settings", exit: "Exit", pauseTitle: "Pause Menu", settingsTitle: "Settings",
         video: "Video", audio: "Audio", controls: "Controls", selectLang: "Select Language:", musicVol: "Music Volume:",
         mute: "Mute", unmute: "Unmute", rebindTxt: "To change a key, click on it and press a new key.",
         up: "Move Up", down: "Move Down", left: "Move Left", right: "Move Right", back: "Back",
-        explore: "Explore", build: "Build", movePop: "Move Population", buildHouse: "Build New House", buildBtn: "Build", surveyBtn: "Survey",
+        explore: "Explore", build: "Build", movePop: "Move Population", buildHouse: "Build New House", buildBtn: "Build",
         close: "✕", cancel: "Cancel", moveBtn: "Move", movePrompt: "How many to move?", dispatchTroops: "Dispatch Troops",
         unlockTitle: "Unlock", unlockQ: "Do you want to unlock this?", unlockCost: "This costs 10 stones.", unlockYes: "Yes, Unlock",
         resultTitle: "Expedition Report", resultRegion: "Region:", resultCasualties: "Casualties:", resultRes: "Resources Report:", resultNone: "No resources found.", collect: "Collect",
-        houseBuilt: "✅ New house built!", buildCancel: "Build canceled", moveCancel: "Move canceled", moveSuccess: "Move successful! Satisfaction increased by 1%.",
-        moveFail: "Bad move! Satisfaction decreased by 1%.", moved: "troops moved.", emptyHouse: "At least one person (you) must stay!", noAdjacent: "You need an adjacent unlocked area to unlock this!", followTut: "Follow the tutorial for now!",
+        houseBuilt: "✅ New house built!", buildCancel: "Build canceled", moveCancel: "Move canceled", moveSuccess: "Move successful!",
+        moveFail: "Bad move!", moved: "troops moved.", emptyHouse: "No one to move!", noAdjacent: "You need an adjacent unlocked area to unlock this!", followTut: "Follow the tutorial for now!",
         buildStart: "House is building, 10 wood deducted!", noWood: "Not enough wood!", clickUnlocked: "Click on the house you just unlocked!",
-        lockedArea: "This area is locked!", tooClose: "Cannot build adjacent to other houses!", occupied: "Already building here!", buildTimer: "House will be built in 30 seconds",
+        lockedArea: "This area is locked!", tooClose: "Cannot build adjacent to other houses!", occupied: "Already building here!",
         keyBindSuccess: "Key binded successfully!", langChanged: "Language changed to English", risk: "Casualties", reward: "Reward per survivor", dispatchBtn: "Dispatch",
-        wood: "Wood", stone: "Stone", food: "Food", fuel: "Fuel", dispatchNotif: "troops to"
+        wood: "Wood", stone: "Stone", food: "Food", fuel: "Fuel", dispatchNotif: "troops to", temp: "Temp"
     }
 };
 
@@ -617,7 +685,7 @@ function applyLang(lang) {
     set('txtBindUp', t.up); set('txtBindDown', t.down); set('txtBindLeft', t.left); set('txtBindRight', t.right);
     set('txtBack', t.back);
     
-    set('txtBuildTitle', t.build); set('txtBuildHouse', t.buildHouse); set('txtBuildBtn', t.buildBtn); set('txtSurveyBtn', t.surveyBtn);
+    set('txtBuildTitle', t.build); set('txtBuildHouse', t.buildHouse); set('txtBuildBtn', t.buildBtn);
     set('txtExploreTitle', t.explore); set('txtMovePopTitle', t.movePop); set('txtMovePopBtn', t.moveBtn); set('txtCancelMove', t.cancel);
     
     document.querySelectorAll('.dispatch-text').forEach(el => el.innerText = t.dispatchBtn);
@@ -626,6 +694,15 @@ function applyLang(lang) {
 
     set('txtUnlockTitle', t.unlockTitle); set('txtUnlockQ', t.unlockQ); set('txtUnlockCost', t.unlockCost); set('txtUnlockYes', t.unlockYes); set('txtCancelUnlock', t.cancel);
     set('txtResultTitle', t.resultTitle); set('txtCloseResult', t.collect);
+
+    const heatItem = Array.from(document.querySelectorAll('.resource-item')).find(item => {
+        const valEl = item.querySelector('.resource-value');
+        return valEl && valEl.id === 'heat';
+    });
+    if (heatItem) {
+        const lbl = heatItem.querySelector('.resource-label');
+        if (lbl) lbl.innerText = t.temp;
+    }
 }
 
 function updateTutorialBox() {
@@ -636,7 +713,6 @@ function updateTutorialBox() {
     if(!txt || !btn || !pointer || !box) return;
 
     box.style.display = 'flex'; 
-    const t = LANG[gameState.currentLang];
 
     if (gameState.tutorialStep === -1) {
         txt.innerHTML = "سلام! من راهنمای تو در این سرمای سهم‌گین هستم. می‌خوای آموزش رو ببینی یا خودت بلدی؟<br><br><div style='text-align:center; margin-top:10px;'><button onclick='startTutorial(true)' style='padding: 8px 15px; background: #f4d03f; border:none; border-radius:4px; cursor:pointer; color:#000; font-weight:bold; font-family:Vazirmatn;'>آموزش ببین</button> <button onclick='startTutorial(false)' style='padding: 8px 15px; background: transparent; border:1px solid #aaa; border-radius:4px; cursor:pointer; color:#fff; font-family:Vazirmatn; margin-right:10px;'>بلدم، شروع کن</button></div>";
@@ -649,8 +725,10 @@ function updateTutorialBox() {
         txt.innerHTML = "آفرین! قفل باز شد. حالا روی دکمه «ساخت و ساز» در پایین صفحه کلیک کن.";
         btn.style.display = 'none'; movePointer('btnBuild');
     } else if (gameState.tutorialStep === 3) {
-        txt.innerHTML = "خوبه! حالا روی دکمه «ساخت» کلیک کن تا خونه به موس بچسبه.";
-        btn.style.display = 'none'; movePointer('selectHouse');
+        txt.innerHTML = "خوبه! حالا روی دکمه «ساخت» در بخش «ساخت خانه جدید» کلیک کن تا خونه به موس بچسبه.";
+        btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
+        pointer.style.display = 'none';
+        btn.onclick = () => { box.style.display = 'none'; };
     } else if (gameState.tutorialStep === 4) {
         txt.innerHTML = "حالا روی اونجایی که قفلش رو باز کردی کلیک کن تا خونه اونجا ساخته بشه و ۱۰ چوب از تو کم بشه.";
         btn.style.display = 'none'; pointer.style.display = 'none';
@@ -659,24 +737,28 @@ function updateTutorialBox() {
         btn.style.display = 'none'; movePointer('btnExplore');
     } else if (gameState.tutorialStep === 6) {
         txt.innerHTML = "اینجا سه منطقه هست. روی منطقه «تخت جمشید» کلیک کن و دکمه «اعزام» اون رو بزن.";
-        btn.style.display = 'none'; movePointer('dispatchPersepolis');
+        btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
+        pointer.style.display = 'none';
+        btn.onclick = () => { box.style.display = 'none'; };
     } else if (gameState.tutorialStep === 7) {
-        txt.innerHTML = "برای آموزش، حتماً باید ۱ نفر رو انتخاب کنی و اعزام کنی. اگر عدد دیگه‌ای بزنی ارور می‌گیری!";
+        txt.innerHTML = "فعلاً در آموزش باید یک نفر رو انتخاب کنی.";
         btn.style.display = 'none'; pointer.style.display = 'none';
     } else if (gameState.tutorialStep === 8) {
-        txt.innerHTML = "آفرین! ۱۰ چوب و ۱۰ سنگ گرفتی. یادت باشه هر روز به ازای هر نفر یک غذا کم میشه! حالا برای گرم شدن، باید نیروگاه بسازی. روی دکمه متوجه شدم بزن.";
+        txt.innerHTML = "آفرین! یادت باشه هر روز به ازای هر نفر یک غذا و به ازای هر نیروگاه یک سوخت مصرف میشه! حالا برای گرم شدن، باید نیروگاه بسازی. روی دکمه متوجه شدم بزن.";
         btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
         pointer.style.display = 'none';
         btn.onclick = () => { gameState.tutorialStep = 9; updateTutorialBox(); };
     } else if (gameState.tutorialStep === 9) {
-        txt.innerHTML = "برای ساخت نیروگاه، باید یه زمین جدید باز کنی. روی یه خونه قفل‌شده کلیک کن که کنارش خونه نباشه (۱۰ سنگ کم میشه).";
+        txt.innerHTML = "برای ساخت نیروگاه، باید یه زمین جدید باز کنی. روی یک مکان قفل‌شده کلیک کن که کنارش خونه نباشه (۱۰ سنگ کم میشه).";
         btn.style.display = 'none'; pointer.style.display = 'none';
     } else if (gameState.tutorialStep === 10) {
         txt.innerHTML = "آفرین! حالا دوباره روی دکمه «ساخت و ساز» کلیک کن.";
         btn.style.display = 'none'; movePointer('btnBuild');
     } else if (gameState.tutorialStep === 11) {
         txt.innerHTML = "این بار روی دکمه «ساخت» نیروگاه کلیک کن.";
-        btn.style.display = 'none'; movePointer('selectPowerPlant');
+        btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
+        pointer.style.display = 'none';
+        btn.onclick = () => { box.style.display = 'none'; };
     } else if (gameState.tutorialStep === 12) {
         txt.innerHTML = "حالا روی زمینی که تازه باز کردی کلیک کن تا نیروگاه ساخته بشه (۱۰ سنگ کم میشه).";
         btn.style.display = 'none'; pointer.style.display = 'none';
@@ -722,9 +804,15 @@ function startExpedition(regionName, troops) {
         region: regionName,
         troops: troops,
         startTime: Date.now(),
-        endTime: Date.now() + (isTutorial ? 10000 : 60000), // 10 ثانیه برای آموزش، 60 ثانیه برای معمول
+        endTime: Date.now() + (isTutorial ? 10000 : 60000),
         isTutorial: isTutorial
     });
+    
+    let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0);
+    if (mainHouse) {
+        mainHouse.pop = Math.max(0, mainHouse.pop - troops);
+    }
+    updateUI();
     
     showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success");
     
@@ -764,9 +852,10 @@ function updateExpeditions() {
         const res = calculateExpeditionResult(exp);
         showExpeditionResult(exp, res);
         
-        if (res.casualties > 0) {
+        let survivors = exp.troops - res.casualties;
+        if (survivors > 0) {
             let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0);
-            if (mainHouse) mainHouse.pop = Math.max(0, mainHouse.pop - res.casualties);
+            if (mainHouse) mainHouse.pop += survivors;
         }
         
         gameState.wood += res.wood;
@@ -780,6 +869,81 @@ function updateExpeditions() {
     if (completed.length > 0) {
         const completedIds = completed.map(c => c.id);
         gameState.expeditions = gameState.expeditions.filter(e => !completedIds.includes(e.id));
+    }
+}
+
+function updateRequests() {
+    const tracker = document.getElementById('requestTrackerBody');
+    if (!tracker) return;
+
+    // اگر در حال جایگذاری مهاجران هستیم، چیزی را تغییر نده
+    if (gameState.isPlacingMigrants) return;
+
+    let expiredIds = [];
+
+    // اگر هیچ درخواستی نیست
+    if (gameState.migrantRequests.length === 0) {
+        if (!tracker.querySelector('.no-req-msg')) {
+            tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>';
+        }
+        return;
+    }
+
+    // اگر درخواستی هست، پیام خالی بودن را پاک کن
+    let noMsg = tracker.querySelector('.no-req-msg');
+    if (noMsg) noMsg.remove();
+
+    gameState.migrantRequests.forEach((req) => {
+        let timeLeft = req.endTime - Date.now();
+        let reqIdStr = `req_${req.id}`;
+        let existingDiv = tracker.querySelector(`[data-req-id="${reqIdStr}"]`);
+
+        if (timeLeft <= 0) {
+            expiredIds.push(req.id);
+            let canFit = calculateCanFit(req.count);
+            if (canFit) {
+                gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+                showNotification("آدم‌های در انتظار کشته شدند! شهروندان راضی بودند. ۱ درصد رضایت بیشتر شد.", "info");
+            } else {
+                gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+                showNotification("آدم‌های در انتظار کشته شدند! ۱ درصد رضایت کم شد.", "warning");
+            }
+            updateUI();
+            if (existingDiv) existingDiv.remove();
+        } else {
+            let progress = 1 - (timeLeft / 180000); // 3 دقیقه
+            if (!existingDiv) {
+                // ساخت المان فقط یک بار
+                let div = document.createElement('div');
+                div.setAttribute('data-req-id', reqIdStr);
+                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;";
+                div.innerHTML = `
+                    <div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">${req.count} نفر در انتظار پذیرش</div>
+                    <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+                        <div class="req-bar" style="width: 0%; height: 100%; background: #e74c3c; transition: width 1s linear;"></div>
+                    </div>
+                    <button class="accept-req-btn" data-id="${req.id}" style="width: 100%; padding: 6px; background: #f4d03f; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#000;">وارد شوند</button>
+                `;
+                tracker.appendChild(div);
+                
+                // اتصال رویداد کلیک به دکمه
+                div.querySelector('.accept-req-btn').addEventListener('click', function() {
+                    let id = parseInt(this.getAttribute('data-id'));
+                    acceptWaitingMigrants(id);
+                });
+            }
+            
+            // آپدیت فقط نوار زمان در فریم‌های بعدی
+            let bar = tracker.querySelector(`[data-req-id="${reqIdStr}"] .req-bar`);
+            if (bar) {
+                bar.style.width = (progress * 100) + '%';
+            }
+        }
+    });
+
+    // حذف درخواست‌های منقضی شده از آرایه
+    if (expiredIds.length > 0) {
+        gameState.migrantRequests = gameState.migrantRequests.filter(r => !expiredIds.includes(r.id));
     }
 }
 
@@ -827,52 +991,94 @@ function showExpeditionResult(exp, res) {
     html += `<div style="margin-bottom:10px; border-top:1px solid #333; padding-top:10px;"><strong style="color:#f4d03f;">${t.resultRes}</strong><br>`;
     
     let foundRes = false;
-    if (res.wood > 0) { html += `🪵 ${t.wood}: ${res.wood}<br>`; foundRes = true; }
-    if (res.stone > 0) { html += `🪨 ${t.stone}: ${res.stone}<br>`; foundRes = true; }
-    if (res.food > 0) { html += `🍖 ${t.food}: ${res.food}<br>`; foundRes = true; }
-    if (res.fuel > 0) { html += `🔥 ${t.fuel}: ${res.fuel}<br>`; foundRes = true; }
+    let resList = '';
+    if (res.wood > 0) { resList += `🪵 ${t.wood}: ${res.wood}<br>`; foundRes = true; }
+    if (res.stone > 0) { resList += `🪨 ${t.stone}: ${res.stone}<br>`; foundRes = true; }
+    if (res.food > 0) { resList += `🍖 ${t.food}: ${res.food}<br>`; foundRes = true; }
+    if (res.fuel > 0) { resList += `🔥 ${t.fuel}: ${res.fuel}<br>`; foundRes = true; }
     
-    if (!foundRes && res.casualties === 0) html += t.resultNone;
+    if (!foundRes) {
+        html += `${t.resultNone}<br>`;
+    } else {
+        html += resList;
+    }
     html += `</div>`;
 
     txt.innerHTML = html;
     modal.style.display = 'block';
 }
 
-function startGameLoop() {
-    setInterval(() => {
-        if (gameState.gameOver || gameState.isPaused) return;
-        gameState.day++;
-        
-        let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
-        gameState.food = Math.max(0, gameState.food - totalPop);
-        
-        gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length);
-        
-        let triggeredComplaint = false;
-        gameState.HOUSE_HEXES.forEach(house => {
-            if (house.pop === 5) {
-                house.daysOvercrowded = (house.daysOvercrowded || 0) + 1;
-                if (house.daysOvercrowded >= 10 && !triggeredComplaint) {
-                    triggeredComplaint = true;
-                    document.getElementById('complaintModal').style.display = 'flex';
-                    house.daysOvercrowded = 0; 
-                }
-            } else {
-                house.daysOvercrowded = 0;
-            }
-        });
-        
+function showMigrantModal(count) {
+    const modal = document.getElementById('migrantModal');
+    const txt = document.getElementById('migrantText');
+    if(!modal || !txt) return;
+
+    txt.innerText = `${count} نفر می‌خواهند به منطقه امن شما بپیوندند. آیا اجازه می‌دهید؟`;
+    modal.style.display = 'flex';
+
+    document.getElementById('migrantReject').onclick = () => {
+        modal.style.display = 'none';
+        let canFit = calculateCanFit(count);
+        if (canFit) {
+            gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+            showNotification("شهروندان ناراحت شدند که نتوانستید کمک کنید. ۱ درصد رضایت کم شد.", "warning");
+        } else {
+            gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+            showNotification("شهروندان راضی بودند که منابعشون تقسیم نشد! ۱ درصد رضایت بیشتر شد.", "info");
+        }
         updateUI();
-    }, 60000); 
+    };
+
+    document.getElementById('migrantWait').onclick = () => {
+        modal.style.display = 'none';
+        gameState.migrantRequests.push({
+            id: Date.now(),
+            count: count,
+            endTime: Date.now() + 180000
+        });
+        showNotification("آدم‌ها در انتظار نگه داشته شدند. به بخش درخواست‌ها مراجعه کنید.", "info");
+    };
+
+    document.getElementById('migrantAccept').onclick = () => {
+        modal.style.display = 'none';
+        startPlacingMigrants(count);
+    };
 }
+
+function nextDay() {
+    if (gameState.gameOver || gameState.isPaused) return;
+    gameState.day++;
+    
+    let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
+    
+    gameState.food = Math.max(0, gameState.food - totalPop);
+    gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length);
+    
+    gameState.HOUSE_HEXES.forEach(h => h.receivedToday = false);
+
+    let hasOvercrowded = gameState.HOUSE_HEXES.some(h => h.pop === 5);
+    let hasSpace = gameState.HOUSE_HEXES.some(h => h.pop < 3);
+    if (hasOvercrowded && hasSpace && gameState.HOUSE_HEXES.length > 1) {
+        document.getElementById('complaintModal').style.display = 'flex';
+    }
+    
+    updateUI();
+
+    if (Math.random() < 0.33) { 
+        let numMigrants = Math.floor(Math.random() * gameState.day) + 1;
+        showMigrantModal(numMigrants);
+    }
+}
+
+function startGameLoop() {}
 
 function updateUI() {
     let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
     gameState.population = totalPop;
 
     let ppCount = gameState.POWERPLANT_HEXES.length;
-    let heatCapacity = ppCount * 10;
+    let heatCapacity = ppCount * 10; 
+    
     if (totalPop > 0) {
         gameState.heat = Math.min(100, Math.round((heatCapacity / totalPop) * 100));
     } else {
@@ -880,6 +1086,18 @@ function updateUI() {
     }
 
     const el = id => document.getElementById(id);
+    
+    const updateBar = (id, value, max) => {
+        const valEl = el(id);
+        if (valEl) {
+            const barEl = valEl.parentElement.querySelector('.resource-bar');
+            if (barEl) {
+                let percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+                barEl.style.width = percentage + '%';
+            }
+        }
+    };
+
     if(el('day')) el('day').textContent = gameState.day;
     if(el('population')) el('population').textContent = gameState.population;
     if(el('wood')) el('wood').textContent = gameState.wood;
@@ -889,15 +1107,26 @@ function updateUI() {
     if(el('heat')) el('heat').textContent = gameState.heat + '%';
     if(el('hope')) el('hope').textContent = gameState.hope + '%';
     if(el('satisfaction')) el('satisfaction').textContent = gameState.satisfaction + '%';
+    
+    updateBar('population', gameState.population, 20); 
+    updateBar('wood', gameState.wood, 50);
+    updateBar('stone', gameState.stone, 50);
+    updateBar('food', gameState.food, 50);
+    updateBar('fuel', gameState.fuel, 50);
+    updateBar('heat', gameState.heat, 100);
+    updateBar('hope', gameState.hope, 100);
+    updateBar('satisfaction', gameState.satisfaction, 100);
 }
+
 function showNotification(text, type = 'info') {
     const c = document.getElementById('notification-container');
-    if(c) { c.style.top = '65px'; c.style.left = '50%'; c.style.transform = 'translateX(-50%)'; c.style.zIndex = '10000'; }
+    if(c) { c.style.top = '90px'; c.style.left = '50%'; c.style.transform = 'translateX(-50%)'; c.style.zIndex = '10000'; }
     const el = document.createElement('div');
     el.className = `notification ${type}`; el.textContent = text;
     c.appendChild(el);
     setTimeout(() => { if (el.parentNode) el.remove(); }, 3000);
 }
+
 function showStoryScreen() {
     const hero = document.querySelector('.hero'); if(hero) hero.style.display = 'none';
     const header = document.getElementById('siteHeader'); if(header) header.style.display = 'none';
@@ -928,14 +1157,25 @@ function startActualGame() {
     if (!mapAnimId) { function anim() { drawMap(); mapAnimId = requestAnimationFrame(anim); } anim(); }
 }
 
+function closeAllPanels(exceptId) {
+    const panels = ['panelBuild', 'panelExplore', 'panelRequests', 'panelMovePop'];
+    panels.forEach(id => {
+        if (id !== exceptId) {
+            const p = document.getElementById(id);
+            if (p) p.classList.remove('panel-open');
+        }
+    });
+}
+
 function openMovePopPanel(maxPop) {
+    closeAllPanels('panelMovePop');
     const btnsDiv = document.getElementById('movePopBtns');
     if(!btnsDiv) return;
     btnsDiv.innerHTML = '';
     for(let i=1; i<=maxPop; i++) {
         let b = document.createElement('button');
         b.innerText = i;
-        b.style.cssText = 'width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-family: Vazirmatn; margin: 5px;';
+        b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-family: 'Vazirmatn', sans-serif; margin: 5px;";
         b.onmouseover = () => { if(b.style.background !== 'rgb(244, 208, 63)') b.style.background = '#34495e'; };
         b.onmouseout = () => { if(b.style.background !== 'rgb(244, 208, 63)') b.style.background = '#2c3e50'; };
         b.onclick = () => {
@@ -991,6 +1231,9 @@ function initGame() {
     
     const style = document.createElement('style');
     style.innerHTML = `
+        #game-screen, #game-screen * {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
         #tutorialPointer {
             position: fixed; width: 60px; height: 60px; border-radius: 50%;
             border: 4px solid #f4d03f; box-shadow: 0 0 15px #f4d03f, inset 0 0 15px #f4d03f;
@@ -999,17 +1242,10 @@ function initGame() {
         }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
-        #pauseModal button, #settingsModal button, select, option {
-            font-family: 'Vazirmatn', sans-serif !important;
-        }
-        select {
-            cursor: pointer; outline: none;
-        }
-        select option {
-            background: #111; color: #fff;
-        }
-        #btnPause {
-            font-family: Arial, sans-serif !important;
+        .top-bar-center {
+            justify-content: center !important;
+            width: 100% !important;
+            padding: 0 20px !important;
         }
 
         @media (max-width: 768px) {
@@ -1019,13 +1255,14 @@ function initGame() {
             #tutorialBox { width: 95% !important; padding: 15px !important; bottom: 80px !important; gap: 10px !important; }
             #tutorialBox img { width: 60px !important; height: 60px !important; }
             #tutorialBox p { font-size: 0.8rem !important; line-height: 1.5 !important; }
-            #unlockModal, #expeditionResultModal { width: 90% !important; }
+            #unlockModal, #expeditionResultModal, #migrantModal { width: 90% !important; }
             #expeditionTracker { right: 10px !important; top: 60px !important; width: 160px !important; }
             #expeditionTracker div { font-size: 0.8rem !important; }
             #movePopBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; }
             #panelExplore .build-item-new { padding: 10px !important; }
             #panelExplore .build-item-new div { font-size: 0.9rem !important; }
             #panelExplore .build-item-new button { padding: 8px !important; font-size: 0.9rem !important; }
+            #btnNextDay { top: 50px !important; padding: 4px 12px !important; font-size: 0.7rem !important; }
         }
     `;
     document.head.appendChild(style);
@@ -1039,12 +1276,19 @@ function initGame() {
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'btnPause';
         pauseBtn.innerHTML = '❚❚';
-        pauseBtn.style.cssText = 'position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: 1px solid rgba(244,208,63,0.4); color: #f5e6c8; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; z-index: 60; display: flex; align-items: center; justify-content: center; transition: 0.2s; line-height: 1;';
+        pauseBtn.style.cssText = "position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: 1px solid rgba(244,208,63,0.4); color: #f5e6c8; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; z-index: 60; display: flex; align-items: center; justify-content: center; transition: 0.2s; line-height: 1;";
         topBar.appendChild(pauseBtn);
         pauseBtn.onmouseover = () => pauseBtn.style.background = 'rgba(244,208,63,0.2)';
         pauseBtn.onmouseout = () => pauseBtn.style.background = 'rgba(255,255,255,0.1)';
         pauseBtn.onclick = togglePauseMenu;
     }
+
+    const nextDayBtn = document.createElement('button');
+    nextDayBtn.id = 'btnNextDay';
+    nextDayBtn.innerText = '⏭️ روز بعد';
+    nextDayBtn.style.cssText = "position: absolute; top: 55px; left: 50%; transform: translateX(-50%); background: linear-gradient(145deg, #f4d03f, #c9a84c); color: #1a1a2e; border: none; padding: 6px 18px; border-radius: 0 0 8px 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; z-index: 55; box-shadow: 0 2px 5px rgba(0,0,0,0.3);";
+    document.getElementById('game-screen').appendChild(nextDayBtn);
+    nextDayBtn.onclick = nextDay;
 
     const bottomBar = document.getElementById('bottom-bar');
     if (bottomBar) {
@@ -1056,17 +1300,23 @@ function initGame() {
     const exploreBtn = document.createElement('button');
     exploreBtn.className = 'bottom-btn';
     exploreBtn.id = 'btnExplore';
-    exploreBtn.innerHTML = '<span class="btn-icon-large">🧭</span><span class="btn-label" id="txtExploreBottom">اکتشاف</span>';
+    exploreBtn.innerHTML = '<span class="btn-icon-large">🧭</span><span class="btn-label">اکتشاف</span>';
     bottomBar.appendChild(exploreBtn);
+
+    const requestsBtn = document.createElement('button');
+    requestsBtn.className = 'bottom-btn';
+    requestsBtn.id = 'btnRequests';
+    requestsBtn.innerHTML = '<span class="btn-icon-large">📜</span><span class="btn-label">درخواست‌ها</span>';
+    bottomBar.appendChild(requestsBtn);
 
     const angryMoveModal = document.createElement('div');
     angryMoveModal.id = 'angryMoveModal';
-    angryMoveModal.style.cssText = 'position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 20px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);';
+    angryMoveModal.style.cssText = "position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 20px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);";
     angryMoveModal.innerHTML = `
-        <div style="flex: 1; text-align: right; font-family: Vazirmatn;">
+        <div style="flex: 1; text-align: right;">
             <h3 style="color: #e74c3c; margin-bottom: 10px; font-size: 1rem;">گزارش شهروندان</h3>
-            <p style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">بابا ما مگه چقدر جون داریم؟ هی از این خونه به اون خونه می‌بریم... یه کم آروم باش!</p>
-            <button id="angryMoveBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-family: Vazirmatn; font-weight: 700; cursor: pointer;">متوجه شدم</button>
+            <p style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">بابا ما مگه چقدر جون داریم؟ هی از این خونه به اون خونه می‌بریمون... یه کم آروم باش!</p>
+            <button id="angryMoveBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer;">متوجه شدم</button>
         </div>
         <img src="angry_move.png?t=${new Date().getTime()}" style="width: 90px; height: 90px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">
     `;
@@ -1075,12 +1325,12 @@ function initGame() {
 
     const complaintModal = document.createElement('div');
     complaintModal.id = 'complaintModal';
-    complaintModal.style.cssText = 'position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 20px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);';
+    complaintModal.style.cssText = "position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 20px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);";
     complaintModal.innerHTML = `
-        <div style="flex: 1; text-align: right; font-family: Vazirmatn;">
+        <div style="flex: 1; text-align: right;">
             <h3 style="color: #e74c3c; margin-bottom: 10px; font-size: 1rem;">گزارش شهروندان</h3>
-            <p id="complaintText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">ببین اقای رییس، ما ۵ نفری توی یک خونه زندگی می‌کنیم، دیوونه شدیم! سخته اینجا، یه کاری بکن لطفاً...</p>
-            <button id="complaintBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-family: Vazirmatn; font-weight: 700; cursor: pointer;">متوجه شدم</button>
+            <p id="complaintText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">ببین اقای رییس، ما ۵ نفری توی یک خونه زندگی می‌کنیم، دیوونه شدیم! در حالی که خونه دیگه‌ات خالیه! یه کاری بکن لطفاً...</p>
+            <button id="complaintBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer;">متوجه شدم</button>
         </div>
         <img src="complaint.png?t=${new Date().getTime()}" style="width: 90px; height: 90px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">
     `;
@@ -1094,14 +1344,14 @@ function initGame() {
 
     const unlockModal = document.createElement('div');
     unlockModal.id = 'unlockModal';
-    unlockModal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);';
+    unlockModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);";
     unlockModal.innerHTML = `
-        <h3 id="txtUnlockTitle" style="color: #f4d03f; margin-bottom: 15px; font-family: Vazirmatn;">باز کردن قفل</h3>
-        <p id="txtUnlockQ" style="color: #e8dcc8; margin-bottom: 5px; font-family: Vazirmatn;">آیا می‌خواهید این قفل را باز کنید؟</p>
-        <p id="txtUnlockCost" style="color: #aaa; font-size: 0.8rem; margin-bottom: 20px; font-family: Vazirmatn;">این کار ۱۰ سنگ هزینه دارد.</p>
+        <h3 id="txtUnlockTitle" style="color: #f4d03f; margin-bottom: 15px;">باز کردن قفل</h3>
+        <p id="txtUnlockQ" style="color: #e8dcc8; margin-bottom: 5px;">آیا می‌خواهید این قفل را باز کنید؟</p>
+        <p id="txtUnlockCost" style="color: #aaa; font-size: 0.8rem; margin-bottom: 20px;">این کار ۱۰ سنگ هزینه دارد.</p>
         <div style="display: flex; gap: 10px;">
-            <button id="txtUnlockYes" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer; font-family: Vazirmatn;">بله، باز کن</button>
-            <button id="txtCancelUnlock" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer; font-family: Vazirmatn;">انصراف</button>
+            <button id="txtUnlockYes" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">بله، باز کن</button>
+            <button id="txtCancelUnlock" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer;">انصراف</button>
         </div>
     `;
     document.getElementById('game-screen').appendChild(unlockModal);
@@ -1125,12 +1375,12 @@ function initGame() {
 
     const dispatchTroopsModal = document.createElement('div');
     dispatchTroopsModal.id = 'dispatchTroopsModal';
-    dispatchTroopsModal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;';
+    dispatchTroopsModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
     dispatchTroopsModal.innerHTML = `
-        <h3 id="txtDispatchTitle" style="color: #f4d03f; margin-bottom: 5px; font-family: Vazirmatn;">اعزام نیرو</h3>
-        <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px; font-family: Vazirmatn;"><span id="txtDispatchQ">اعزام شوند؟</span> <span id="modalRegionName" style="color:#f4d03f; font-weight:bold;"></span></p>
+        <h3 id="txtDispatchTitle" style="color: #f4d03f; margin-bottom: 5px;">اعزام نیرو</h3>
+        <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;"><span id="txtDispatchQ">اعزام شوند؟</span> <span id="modalRegionName" style="color:#f4d03f; font-weight:bold;"></span></p>
         <div id="dispatchTroopsBtns" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px;"></div>
-        <button id="txtCancelDispatch" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer; font-family: Vazirmatn;">انصراف</button>
+        <button id="txtCancelDispatch" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">انصراف</button>
     `;
     document.getElementById('game-screen').appendChild(dispatchTroopsModal);
     document.getElementById('txtCancelDispatch').onclick = () => {
@@ -1169,6 +1419,21 @@ function initGame() {
     `;
     document.getElementById('game-screen').appendChild(panelExplore);
 
+    const panelRequests = document.createElement('div');
+    panelRequests.className = 'floating-panel';
+    panelRequests.id = 'panelRequests';
+    panelRequests.innerHTML = `
+        <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);">
+            <h3 style="font-size:1rem; color:#f4d03f;">درخواست‌ها</h3>
+            <button id="closeRequestsPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>
+        <div class="panel-body" id="requestTrackerBody" style="padding:16px; max-height: 400px; overflow-y: auto;">
+            <p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>
+        </div>
+    `;
+    document.getElementById('game-screen').appendChild(panelRequests);
+    document.getElementById('closeRequestsPanel').onclick = () => panelRequests.classList.remove('panel-open');
+
     const panelBuild = document.getElementById('panelBuild');
     panelBuild.innerHTML = `
         <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);">
@@ -1181,8 +1446,7 @@ function initGame() {
                     <div id="txtBuildHouse" class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت خانه جدید</div>
                     <div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ چوب</div>
                     <div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;">
-                        <button id="txtBuildBtn" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-family:'Vazirmatn'; font-weight:700; cursor:pointer;">ساخت</button>
-                        <button id="txtSurveyBtn" class="survey-btn" style="padding:8px 16px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; font-family:'Vazirmatn'; cursor:pointer;">نظر سنجی</button>
+                        <button id="txtBuildBtn" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button>
                     </div>
                 </div>
                 <img src="house.png?t=${new Date().getTime()}" style="width:80px; height:80px; object-fit:contain; border-radius:8px; background:#111; border:1px solid #333;">
@@ -1193,8 +1457,7 @@ function initGame() {
                     <div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت نیروگاه</div>
                     <div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ سنگ</div>
                     <div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;">
-                        <button id="selectPowerPlant" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-family:'Vazirmatn'; font-weight:700; cursor:pointer;">ساخت</button>
-                        <button id="surveyPowerPlant" class="survey-btn" style="padding:8px 16px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; font-family:'Vazirmatn'; cursor:pointer;">نظر سنجی</button>
+                        <button id="selectPowerPlant" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button>
                     </div>
                 </div>
                 <img src="powerplant.png?t=${new Date().getTime()}" style="width:80px; height:80px; object-fit:contain; border-radius:8px; background:#111; border:1px solid #333;">
@@ -1220,12 +1483,12 @@ function initGame() {
 
     const tracker = document.createElement('div');
     tracker.id = 'expeditionTracker';
-    tracker.style.cssText = 'position: fixed; right: 20px; top: 70px; width: 220px; z-index: 200; display: flex; flex-direction: column; gap: 10px;';
+    tracker.style.cssText = "position: fixed; right: 20px; top: 70px; width: 220px; z-index: 200; display: flex; flex-direction: column; gap: 10px;";
     document.getElementById('game-screen').appendChild(tracker);
 
     const resultModal = document.createElement('div');
     resultModal.id = 'expeditionResultModal';
-    resultModal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: right; box-shadow: 0 0 30px rgba(0,0,0,0.8);';
+    resultModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: right; box-shadow: 0 0 30px rgba(0,0,0,0.8);";
     resultModal.innerHTML = `
         <h3 id="txtResultTitle" style="color: #f4d03f; text-align: center; margin-bottom: 15px;">گزارش اکتشاف</h3>
         <div id="resultText" style="color: #e8dcc8; font-size: 1rem; line-height: 1.8;"></div>
@@ -1234,8 +1497,22 @@ function initGame() {
     document.getElementById('game-screen').appendChild(resultModal);
     document.getElementById('txtCloseResult').onclick = () => resultModal.style.display = 'none';
 
+    const migrantModal = document.createElement('div');
+    migrantModal.id = 'migrantModal';
+    migrantModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 350px; max-width: 90%; background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; align-items: center; gap: 20px; box-shadow: 0 0 40px rgba(0,0,0,0.9); text-align: center;";
+    migrantModal.innerHTML = `
+        <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0;">درخواست پناهندگی</h3>
+        <p id="migrantText" style="color: #e8dcc8; margin: 0; font-size: 0.95rem; line-height: 1.8;"></p>
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+            <button id="migrantAccept" style="padding: 12px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 8px; color: #1a1a2e; font-weight: 700; cursor: pointer; font-size: 1rem;">پذیرش و میزبانی</button>
+            <button id="migrantWait" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 8px; color: #f5e6c8; cursor: pointer; font-size: 0.9rem;">فعلاً در انتظار بمانند</button>
+            <button id="migrantReject" style="padding: 10px; background: transparent; border: 1px solid #e74c3c; border-radius: 8px; color: #e74c3c; cursor: pointer; font-size: 0.9rem;">رد کردن و رها کردن</button>
+        </div>
+    `;
+    document.getElementById('game-screen').appendChild(migrantModal);
+
     const menuHTML = `
-        <div id="pauseModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000; display: none; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;">
+        <div id="pauseModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000; display: none; justify-content: center; align-items: center;">
             <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; text-align: center; width: 300px;">
                 <h2 id="txtPauseTitle" style="color: #f4d03f; margin-bottom: 20px;">منوی توقف</h2>
                 <button id="txtResume" style="display:block; width:100%; margin-bottom:10px; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ادامه بازی</button>
@@ -1244,7 +1521,7 @@ function initGame() {
             </div>
         </div>
 
-        <div id="settingsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2001; display: none; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;">
+        <div id="settingsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2001; display: none; justify-content: center; align-items: center;">
             <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; width: 400px;">
                 <h2 id="txtSettingsTitle" style="color: #f4d03f; margin-bottom: 20px; text-align: center;">تنظیمات</h2>
                 <div style="display: flex; justify-content: space-around; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">
@@ -1255,7 +1532,7 @@ function initGame() {
 
                 <div id="contentVideo" style="display:none; text-align:center;">
                     <p id="txtLangSel" style="color:#f5e6c8; margin-bottom:10px;">انتخاب زبان:</p>
-                    <select id="langSelect" style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #333; border-radius:6px; font-family: 'Vazirmatn', sans-serif;">
+                    <select id="langSelect" style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #333; border-radius:6px;">
                         <option value="fa">فارسی</option>
                         <option value="en">English</option>
                     </select>
@@ -1337,15 +1614,20 @@ function initGame() {
     document.getElementById('bindRight').onclick = () => { gameState.rebindingKey = 'right'; document.getElementById('bindRight').innerText = '...'; };
 
     document.getElementById('btnBuild').onclick = () => {
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 2 && gameState.tutorialStep !== 10) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
+        closeAllPanels('panelBuild');
         panelBuild.classList.add('panel-open');
         if (gameState.tutorialStep === 2) { gameState.tutorialStep = 3; updateTutorialBox(); }
         else if (gameState.tutorialStep === 10) { gameState.tutorialStep = 11; updateTutorialBox(); }
     };
     document.getElementById('closeBuildPanel').onclick = () => panelBuild.classList.remove('panel-open');
-    document.getElementById('txtSurveyBtn').onclick = () => { showNotification("بخش نظر سنجی فعلا غیرفعال است.", "info"); };
-    document.getElementById('surveyPowerPlant').onclick = () => { showNotification("بخش نظر سنجی فعلا غیرفعال است.", "info"); };
     
     document.getElementById('txtBuildBtn').onclick = () => {
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 3) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
         gameState.isPlacing = true;
         gameState.placingType = 'house';
         panelBuild.classList.remove('panel-open');
@@ -1353,6 +1635,9 @@ function initGame() {
     };
 
     document.getElementById('selectPowerPlant').onclick = () => {
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 11) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
         gameState.isPlacing = true;
         gameState.placingType = 'powerplant';
         panelBuild.classList.remove('panel-open');
@@ -1360,14 +1645,41 @@ function initGame() {
     };
 
     exploreBtn.onclick = () => {
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
+        closeAllPanels('panelExplore');
         panelExplore.classList.add('panel-open');
         if (gameState.tutorialStep === 5) { gameState.tutorialStep = 6; updateTutorialBox(); }
     };
     document.getElementById('closeExplorePanel').onclick = () => panelExplore.classList.remove('panel-open');
 
+    requestsBtn.onclick = () => {
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
+        closeAllPanels('panelRequests');
+        panelRequests.classList.add('panel-open');
+    };
+
     const openDispatchModal = (regionName) => {
-        if (gameState.tutorialStep === 6 && regionName !== 'تخت جمشید') { showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; }
-        if (gameState.tutorialStep > 0 && gameState.tutorialStep < 8 && gameState.tutorialStep !== 6) { showNotification("فعلاً طبق آموزش پیش برو!", "warning"); return; }
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 6) {
+            showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return;
+        }
+        if (gameState.tutorialStep === 6 && regionName !== 'تخت جمشید') { 
+            showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; 
+        }
+
+        if (gameState.population < 2) {
+            showNotification("شهروند کافی برای اعزام ندارید! (حداقل به ۲ نفر نیاز دارید تا یکی بتواند برود)", "warning");
+            panelExplore.classList.remove('panel-open');
+            return;
+        }
+
+        if (gameState.tutorialStep === 6) {
+            gameState.tutorialStep = 7;
+            updateTutorialBox();
+        }
 
         gameState.selectedRegion = regionName;
         document.getElementById('modalRegionName').innerText = regionName;
@@ -1379,14 +1691,14 @@ function initGame() {
         for(let i=1; i<=maxTroops; i++) {
             let b = document.createElement('button');
             b.innerText = i;
-            b.style.cssText = 'width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-family: Vazirmatn; margin: 5px;';
+            b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: 5px;";
             b.onmouseover = () => b.style.background = '#34495e';
             b.onmouseout = () => b.style.background = '#2c3e50';
             b.onclick = () => {
-                if (gameState.tutorialStep === 6 && i !== 1) {
+                if (gameState.tutorialStep === 7 && i !== 1) {
                     showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return;
                 }
-                if (gameState.tutorialStep === 6) { gameState.tutorialStep = 7.5; }
+                if (gameState.tutorialStep === 7) { gameState.tutorialStep = 7.5; }
                 startExpedition(gameState.selectedRegion, i);
                 dispatchTroopsModal.style.display = 'none';
                 dispatchTroopsModal.style.opacity = 0;
@@ -1423,7 +1735,7 @@ function initGame() {
             <div style="flex: 1; text-align: right;">
                 <h3 style="color: #f4d03f; margin-bottom: 10px; font-size: 1rem;">آموزش بازی</h3>
                 <p id="tutorialText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;"></p>
-                <button id="tutorialBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 6px; color: #1a1a2e; font-family: 'Vazirmatn'; font-weight: 700; cursor: pointer; display: none;">متوجه شدم</button>
+                <button id="tutorialBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 6px; color: #1a1a2e; font-weight: 700; cursor: pointer; display: none;">متوجه شدم</button>
             </div>
             <img src="guide.png?t=${new Date().getTime()}" style="width: 90px; height: 90px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">
         </div>
