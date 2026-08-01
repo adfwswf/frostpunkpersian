@@ -7,13 +7,17 @@ const HOUSE_OFFSET_X = 0;         // جابجایی چپ و راست
 const HOUSE_OFFSET_Y = 25;        // جابجایی بالا و پایین خانه
 const POWERPLANT_OFFSET_Y = 10;   // جابجایی بالا و پایین نیروگاه
 const MUSIC_START_TIME = 15;      // ثانیه شروع موسیقی
+// --- تنظیمات دکمه‌های عکسی ---
+const NEXT_DAY_BTN_TOP = 73;      // فاصله دکمه روز بعد از بالا (پایین هدر)
+const NEXT_DAY_BTN_SIZE = 67;     // اندازه عکس دکمه روز بعد (پیکسل)
+const PAUSE_BTN_SIZE = 32;        // اندازه عکس دکمه استوپ (پیکسل)
 // =================================================================
 
 let bgMusic = null; 
 
 const gameState = {
     day: 1, population: 5, fuel: 5, food: 30, wood: 20, stone: 20, heat: 0, hope: 30, satisfaction: 50,
-    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, mouseX: 0, mouseY: 0,
+    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, migrantTargetHouses: [], mouseX: 0, mouseY: 0,
     buildings: [], constructionSites: [], obstacles: [], clearingSites: [],
     hexes: [], hexSize: 45, clickedHex: null,
     HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }],
@@ -41,6 +45,85 @@ houseImg.src = "house.png?t=" + new Date().getTime();
 
 const powerplantImg = new Image();
 powerplantImg.src = "powerplant.png?t=" + new Date().getTime();
+
+// === سیستم ذخیره و بارگذاری ===
+function saveGame(silent = false) {
+    try {
+        const saveData = {
+            day: gameState.day,
+            population: gameState.population,
+            fuel: gameState.fuel,
+            food: gameState.food,
+            wood: gameState.wood,
+            stone: gameState.stone,
+            heat: gameState.heat,
+            hope: gameState.hope,
+            satisfaction: gameState.satisfaction,
+            HOUSE_HEXES: gameState.HOUSE_HEXES,
+            POWERPLANT_HEXES: gameState.POWERPLANT_HEXES,
+            unlockedHexes: gameState.unlockedHexes,
+            tutorialStep: gameState.tutorialStep
+        };
+        localStorage.setItem('lastWarmthSave', JSON.stringify(saveData));
+        if (!silent) showNotification("بازی ذخیره شد!", "success");
+    } catch (e) {
+        if (!silent) showNotification("خطا در ذخیره بازی!", "error");
+    }
+}
+
+function hasSavedGame() {
+    return localStorage.getItem('lastWarmthSave') !== null;
+}
+
+function loadGame() {
+    try {
+        const savedData = JSON.parse(localStorage.getItem('lastWarmthSave'));
+        if (savedData) {
+            gameState.day = savedData.day;
+            gameState.population = savedData.population;
+            gameState.fuel = savedData.fuel;
+            gameState.food = savedData.food;
+            gameState.wood = savedData.wood;
+            gameState.stone = savedData.stone;
+            gameState.heat = savedData.heat;
+            gameState.hope = savedData.hope;
+            gameState.satisfaction = savedData.satisfaction;
+            gameState.HOUSE_HEXES = savedData.HOUSE_HEXES;
+            gameState.POWERPLANT_HEXES = savedData.POWERPLANT_HEXES;
+            gameState.unlockedHexes = savedData.unlockedHexes;
+            gameState.tutorialStep = savedData.tutorialStep !== undefined ? savedData.tutorialStep : 0;
+            return true;
+        }
+    } catch (e) {}
+    return false;
+}
+
+function showGameOver() {
+    gameState.gameOver = true;
+    const gs = document.getElementById('game-screen');
+    if (gs) gs.style.display = 'none';
+    
+    let goScreen = document.getElementById('gameOverScreen');
+    if (!goScreen) {
+        goScreen = document.createElement('div');
+        goScreen.id = 'gameOverScreen';
+        goScreen.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #e74c3c; font-family: 'Vazirmatn', sans-serif; gap: 20px; text-align: center;";
+        goScreen.innerHTML = `
+            <h1 style="font-size: 4rem; text-shadow: 0 0 30px rgba(231, 76, 60, 0.8); margin: 0;">پایان بازی</h1>
+            <p style="color: #f5e6c8; font-size: 1.2rem; max-width: 400px;">شما و تمام شهروندانتان در این سرمای سهم‌گین جان خود را از دست دادید. امید همگانی برای همیشه از بین رفت...</p>
+            <button id="btnGoMenu" style="padding: 14px 40px; background: linear-gradient(135deg, #e8451a, #ff6b2b); color: #fff; border: none; border-radius: 4px; font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: 0 0 25px rgba(232,69,26,0.4); margin-top: 20px;">منوی اصلی</button>
+        `;
+        document.body.appendChild(goScreen);
+        
+        document.getElementById('btnGoMenu').onclick = () => {
+            localStorage.removeItem('lastWarmthSave'); 
+            window.location.reload();
+        };
+    } else {
+        goScreen.style.display = 'flex';
+    }
+}
+// =================================
 
 window.startTutorial = function(val) {
     gameState.tutorialStep = val ? 1 : 0;
@@ -130,6 +213,7 @@ function getHoveredHex(mx, my) {
 function hexDistance(a, b) { return (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - (b.q + b.r))) / 2; }
 
 function drawMap() {
+    if (gameState.gameOver) return;
     const canvas = document.getElementById('gameMap'); if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const container = document.getElementById('map-container');
@@ -429,6 +513,7 @@ function calculateCanFit(count) {
 function startPlacingMigrants(count) {
     gameState.isPlacingMigrants = true;
     gameState.migrantsToPlace = count;
+    gameState.migrantTargetHouses = []; 
     showNotification(`${count} مهاجر وارد شد. روی خونه‌ها کلیک کن تا مستقر شوند.`, "info");
 }
 
@@ -445,17 +530,28 @@ function handleMapClick() {
         let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
         if (destHouse && destHouse.pop < 5) {
             destHouse.pop++;
+            if (!gameState.migrantTargetHouses.includes(destHouse)) {
+                gameState.migrantTargetHouses.push(destHouse);
+            }
             gameState.migrantsToPlace--;
             updateUI();
             if (gameState.migrantsToPlace === 0) {
                 gameState.isPlacingMigrants = false;
-                let overPopulated = gameState.HOUSE_HEXES.some(h => h.pop > 3);
-                if (overPopulated) {
+                
+                let causedOverpopulation = false;
+                for (let h of gameState.migrantTargetHouses) {
+                    if (h.pop > 3) {
+                        causedOverpopulation = true;
+                        break;
+                    }
+                }
+                
+                if (causedOverpopulation) {
                     gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
-                    showNotification("خونه‌ها شلوغ شد! ۱ درصد رضایت کم شد.", "warning");
+                    showNotification("خونه‌های پذیرنده شلوغ شد! ۱ درصد رضایت کم شد.", "warning");
                 } else {
                     gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
-                    showNotification("میزبانی خوبی بود! ۱ درصد رضایت بیشتر شد.", "success");
+                    showNotification("میزبانی عالی بود! ۱ درصد رضایت بیشتر شد.", "success");
                 }
                 updateUI();
             }
@@ -480,8 +576,6 @@ function handleMapClick() {
                 showNotification("جابه‌جایی نامناسب! یک درصد رضایت کم شد.", "warning");
                 gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
                 updateUI();
-                gameState.isMovingPop = false;
-                return;
             }
 
             if (sourceHouse.receivedToday) {
@@ -712,6 +806,13 @@ function updateTutorialBox() {
     const box = document.getElementById('tutorialBox');
     if(!txt || !btn || !pointer || !box) return;
 
+    if (gameState.tutorialStep === 0) {
+        box.style.display = 'none';
+        btn.style.display = 'none';
+        pointer.style.display = 'none';
+        return;
+    }
+
     box.style.display = 'flex'; 
 
     if (gameState.tutorialStep === -1) {
@@ -876,12 +977,10 @@ function updateRequests() {
     const tracker = document.getElementById('requestTrackerBody');
     if (!tracker) return;
 
-    // اگر در حال جایگذاری مهاجران هستیم، چیزی را تغییر نده
     if (gameState.isPlacingMigrants) return;
 
     let expiredIds = [];
 
-    // اگر هیچ درخواستی نیست
     if (gameState.migrantRequests.length === 0) {
         if (!tracker.querySelector('.no-req-msg')) {
             tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>';
@@ -889,7 +988,6 @@ function updateRequests() {
         return;
     }
 
-    // اگر درخواستی هست، پیام خالی بودن را پاک کن
     let noMsg = tracker.querySelector('.no-req-msg');
     if (noMsg) noMsg.remove();
 
@@ -902,18 +1000,17 @@ function updateRequests() {
             expiredIds.push(req.id);
             let canFit = calculateCanFit(req.count);
             if (canFit) {
-                gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
-                showNotification("آدم‌های در انتظار کشته شدند! شهروندان راضی بودند. ۱ درصد رضایت بیشتر شد.", "info");
-            } else {
                 gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
-                showNotification("آدم‌های در انتظار کشته شدند! ۱ درصد رضایت کم شد.", "warning");
+                showNotification("آدم‌های در انتظار کشته شدند! شهروندان ناراحت شدند. ۱ درصد رضایت کم شد.", "warning");
+            } else {
+                gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+                showNotification("آدم‌های در انتظار کشته شدند! اما شهروندان راضی بودند که منابع هدر نرفت. ۱ درصد رضایت بیشتر شد.", "info");
             }
             updateUI();
             if (existingDiv) existingDiv.remove();
         } else {
-            let progress = 1 - (timeLeft / 180000); // 3 دقیقه
+            let progress = 1 - (timeLeft / 180000); 
             if (!existingDiv) {
-                // ساخت المان فقط یک بار
                 let div = document.createElement('div');
                 div.setAttribute('data-req-id', reqIdStr);
                 div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;";
@@ -926,14 +1023,12 @@ function updateRequests() {
                 `;
                 tracker.appendChild(div);
                 
-                // اتصال رویداد کلیک به دکمه
                 div.querySelector('.accept-req-btn').addEventListener('click', function() {
                     let id = parseInt(this.getAttribute('data-id'));
                     acceptWaitingMigrants(id);
                 });
             }
             
-            // آپدیت فقط نوار زمان در فریم‌های بعدی
             let bar = tracker.querySelector(`[data-req-id="${reqIdStr}"] .req-bar`);
             if (bar) {
                 bar.style.width = (progress * 100) + '%';
@@ -941,7 +1036,6 @@ function updateRequests() {
         }
     });
 
-    // حذف درخواست‌های منقضی شده از آرایه
     if (expiredIds.length > 0) {
         gameState.migrantRequests = gameState.migrantRequests.filter(r => !expiredIds.includes(r.id));
     }
@@ -1021,10 +1115,10 @@ function showMigrantModal(count) {
         let canFit = calculateCanFit(count);
         if (canFit) {
             gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
-            showNotification("شهروندان ناراحت شدند که نتوانستید کمک کنید. ۱ درصد رضایت کم شد.", "warning");
+            showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، کمک نکردید. ۱ درصد رضایت کم شد.", "warning");
         } else {
             gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
-            showNotification("شهروندان راضی بودند که منابعشون تقسیم نشد! ۱ درصد رضایت بیشتر شد.", "info");
+            showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info");
         }
         updateUI();
     };
@@ -1051,7 +1145,36 @@ function nextDay() {
     
     let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
     
-    gameState.food = Math.max(0, gameState.food - totalPop);
+    let starvedCount = 0;
+    if (gameState.food < totalPop) {
+        starvedCount = totalPop - gameState.food;
+        gameState.food = 0;
+        
+        let toKill = starvedCount;
+        while (toKill > 0) {
+            let eligibleHouses = gameState.HOUSE_HEXES.filter(h => h.pop > 0);
+            if (eligibleHouses.length === 0) break;
+            
+            let house = eligibleHouses[Math.floor(Math.random() * eligibleHouses.length)];
+            house.pop--;
+            toKill--;
+        }
+        
+        let remainingPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0);
+        if (remainingPop <= 0) {
+            showGameOver();
+            return;
+        }
+        
+        let modal = document.getElementById('starvationModal');
+        if (modal) {
+            document.getElementById('starvationText').innerText = `به دلیل کمبود غذا، ${starvedCount} نفر از شهروندان جان باختند. لطفاً منابع غذایی رو مدیریت کن!`;
+            modal.style.display = 'flex';
+        }
+    } else {
+        gameState.food -= totalPop;
+    }
+    
     gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length);
     
     gameState.HOUSE_HEXES.forEach(h => h.receivedToday = false);
@@ -1202,6 +1325,47 @@ function showAngryMoveModal() {
     if(modal) modal.style.display = 'flex';
 }
 
+function continueGame() {
+    if (!hasSavedGame()) return;
+    loadGame(); 
+
+    if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 17) {
+        let modal = document.getElementById('tutorialPromptModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'tutorialPromptModal';
+            modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; display: flex; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;";
+            modal.innerHTML = `
+                <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; text-align: center; width: 350px; max-width: 90%; display: flex; flex-direction: column; gap: 20px;">
+                    <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0;">در حالت آموزش هستید!</h3>
+                    <p style="color: #e8dcc8; font-size: 0.95rem; margin: 0;">شما وسط آموزش بازی را ترک کرده‌اید. آیا می‌خواهید از همانجا ادامه دهید یا آموزش را از اول ببینید؟</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button id="btnContTut" style="padding: 12px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 8px; color: #1a1a2e; font-weight: 700; cursor: pointer;">ادامه آموزش</button>
+                        <button id="btnRestartTut" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 8px; color: #f5e6c8; cursor: pointer;">شروع از اول</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+
+        document.getElementById('btnContTut').onclick = () => {
+            modal.style.display = 'none';
+            showStoryScreen();
+            startActualGame();
+        };
+        document.getElementById('btnRestartTut').onclick = () => {
+            modal.style.display = 'none';
+            gameState.tutorialStep = 1; 
+            showStoryScreen();
+            startActualGame();
+        };
+    } else {
+        showStoryScreen();
+        startActualGame();
+    }
+}
+
 function initGame() {
     bgMusic = new Audio('music.mp3');
     bgMusic.volume = 0.4; 
@@ -1223,6 +1387,28 @@ function initGame() {
         bgMusic.currentTime = MUSIC_START_TIME;
         bgMusic.play();
     });
+
+    window.addEventListener('beforeunload', function (e) {
+        const gs = document.getElementById('game-screen');
+        if (gs && gs.style.display === 'block' && !gameState.gameOver) {
+            saveGame(true); 
+        }
+    });
+
+    const heroActions = document.querySelector('.hero-actions');
+    const startBtnHero = document.getElementById('startBtnHero');
+    if (heroActions && startBtnHero) {
+        if (hasSavedGame()) {
+            const continueBtn = document.createElement('button');
+            continueBtn.id = 'btnContinueHero';
+            continueBtn.className = 'btn-primary';
+            continueBtn.innerText = 'ادامه بازی';
+            continueBtn.style.marginRight = '15px';
+            continueBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)'; 
+            continueBtn.onclick = continueGame;
+            heroActions.insertBefore(continueBtn, startBtnHero);
+        }
+    }
 
     document.getElementById('startBtnHero').onclick = showStoryScreen;
     document.getElementById('startActualGameBtn').onclick = startActualGame;
@@ -1262,7 +1448,6 @@ function initGame() {
             #panelExplore .build-item-new { padding: 10px !important; }
             #panelExplore .build-item-new div { font-size: 0.9rem !important; }
             #panelExplore .build-item-new button { padding: 8px !important; font-size: 0.9rem !important; }
-            #btnNextDay { top: 50px !important; padding: 4px 12px !important; font-size: 0.7rem !important; }
         }
     `;
     document.head.appendChild(style);
@@ -1275,19 +1460,32 @@ function initGame() {
     if (topBar) {
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'btnPause';
-        pauseBtn.innerHTML = '❚❚';
-        pauseBtn.style.cssText = "position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: 1px solid rgba(244,208,63,0.4); color: #f5e6c8; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; z-index: 60; display: flex; align-items: center; justify-content: center; transition: 0.2s; line-height: 1;";
+        // دکمه استوپ با عکس نرم شده (border-radius برای گرد کردن گوشه‌های تیز)
+        pauseBtn.innerHTML = `<img src="pause_icon.png" style="width: ${PAUSE_BTN_SIZE}px; height: ${PAUSE_BTN_SIZE}px; pointer-events: none; border-radius: 8px; transition: filter 0.2s ease;">`;
+        pauseBtn.style.cssText = "position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 0;";
         topBar.appendChild(pauseBtn);
-        pauseBtn.onmouseover = () => pauseBtn.style.background = 'rgba(244,208,63,0.2)';
-        pauseBtn.onmouseout = () => pauseBtn.style.background = 'rgba(255,255,255,0.1)';
+        pauseBtn.onmouseover = () => pauseBtn.querySelector('img').style.filter = 'brightness(1.3) drop-shadow(0 0 8px rgba(244, 208, 63, 0.8))';
+        pauseBtn.onmouseout = () => pauseBtn.querySelector('img').style.filter = 'none';
         pauseBtn.onclick = togglePauseMenu;
     }
 
     const nextDayBtn = document.createElement('button');
     nextDayBtn.id = 'btnNextDay';
-    nextDayBtn.innerText = '⏭️ روز بعد';
-    nextDayBtn.style.cssText = "position: absolute; top: 55px; left: 50%; transform: translateX(-50%); background: linear-gradient(145deg, #f4d03f, #c9a84c); color: #1a1a2e; border: none; padding: 6px 18px; border-radius: 0 0 8px 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; z-index: 55; box-shadow: 0 2px 5px rgba(0,0,0,0.3);";
+    // دکمه روز بعد با عکس بزرگتر و فاصله بیشتر از هدر (با استفاده از متغیرها)
+    nextDayBtn.innerHTML = `<img src="next_day_icon.png" style="width: ${NEXT_DAY_BTN_SIZE}px; height: ${NEXT_DAY_BTN_SIZE}px; pointer-events: none; border-radius: 12px; transition: filter 0.2s ease, transform 0.2s ease;">`;
+    nextDayBtn.style.cssText = `position: absolute; top: ${NEXT_DAY_BTN_TOP}px; left: 50%; transform: translateX(-50%); background: none; border: none; cursor: pointer; z-index: 55; padding: 0;`;
     document.getElementById('game-screen').appendChild(nextDayBtn);
+    
+    nextDayBtn.onmouseover = () => {
+        const img = nextDayBtn.querySelector('img');
+        img.style.filter = 'brightness(1.2) drop-shadow(0 0 10px rgba(244, 208, 63, 0.9))';
+        img.style.transform = 'scale(1.1)';
+    };
+    nextDayBtn.onmouseout = () => {
+        const img = nextDayBtn.querySelector('img');
+        img.style.filter = 'none';
+        img.style.transform = 'scale(1)';
+    };
     nextDayBtn.onclick = nextDay;
 
     const bottomBar = document.getElementById('bottom-bar');
@@ -1329,7 +1527,7 @@ function initGame() {
     complaintModal.innerHTML = `
         <div style="flex: 1; text-align: right;">
             <h3 style="color: #e74c3c; margin-bottom: 10px; font-size: 1rem;">گزارش شهروندان</h3>
-            <p id="complaintText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">ببین اقای رییس، ما ۵ نفری توی یک خونه زندگی می‌کنیم، دیوونه شدیم! در حالی که خونه دیگه‌ات خالیه! یه کاری بکن لطفاً...</p>
+            <p id="complaintText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;">ببین اقای رییس، ما ۵ نفری توی یک خونه زندگی می‌کنیم، دیوونه شدیم! در حالی که خونه ی دیگه ات جمعیتش کمتره! یه کاری بکن لطفاً...</p>
             <button id="complaintBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer;">متوجه شدم</button>
         </div>
         <img src="complaint.png?t=${new Date().getTime()}" style="width: 90px; height: 90px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">
@@ -1341,6 +1539,20 @@ function initGame() {
         updateUI();
         showNotification("۱ درصد رضایت کم شد!", "warning");
     };
+    
+    const starvationModal = document.createElement('div');
+    starvationModal.id = 'starvationModal';
+    starvationModal.style.cssText = "position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 20px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);";
+    starvationModal.innerHTML = `
+        <div style="flex: 1; text-align: right;">
+            <h3 style="color: #e74c3c; margin-bottom: 10px; font-size: 1rem;">گزارش تلفات</h3>
+            <p id="starvationText" style="color: #e8dcc8; font-size: 0.85rem; line-height: 1.6;"></p>
+            <button id="starvationBtn" style="margin-top: 12px; padding: 8px 20px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer;">متوجه شدم</button>
+        </div>
+        <img src="starvation.png?t=${new Date().getTime()}" style="width: 90px; height: 90px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+    `;
+    document.getElementById('game-screen').appendChild(starvationModal);
+    document.getElementById('starvationBtn').onclick = () => starvationModal.style.display = 'none';
 
     const unlockModal = document.createElement('div');
     unlockModal.id = 'unlockModal';
@@ -1561,7 +1773,12 @@ function initGame() {
     document.getElementById('game-screen').insertAdjacentHTML('beforeend', menuHTML);
 
     document.getElementById('txtResume').onclick = togglePauseMenu;
-    document.getElementById('txtExit').onclick = () => window.location.reload();
+    document.getElementById('txtExit').onclick = () => {
+        saveGame();
+        setTimeout(() => {
+            window.location.reload();
+        }, 500); 
+    };
     
     document.getElementById('txtSettings1').onclick = () => {
         document.getElementById('pauseModal').style.display = 'none';
@@ -1670,11 +1887,13 @@ function initGame() {
             showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; 
         }
 
-        if (gameState.population < 2) {
-            showNotification("شهروند کافی برای اعزام ندارید! (حداقل به ۲ نفر نیاز دارید تا یکی بتواند برود)", "warning");
+        let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0);
+        if (!mainHouse || mainHouse.pop <= 1) {
+            showNotification("شهروند کافی برای اعزام ندارید! (حداقل ۲ نفر در خونه اصلی لازم است)", "warning");
             panelExplore.classList.remove('panel-open');
             return;
         }
+        const maxTroops = mainHouse.pop - 1;
 
         if (gameState.tutorialStep === 6) {
             gameState.tutorialStep = 7;
@@ -1686,7 +1905,6 @@ function initGame() {
         
         const btnsDiv = document.getElementById('dispatchTroopsBtns');
         btnsDiv.innerHTML = '';
-        const maxTroops = Math.max(1, gameState.population - 1);
         
         for(let i=1; i<=maxTroops; i++) {
             let b = document.createElement('button');
