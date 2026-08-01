@@ -1572,6 +1572,10 @@ function initGame() {
     
     document.getElementById('eventClose').onclick = () => document.getElementById('event-panel').classList.replace('event-panel-visible', 'event-panel-hidden');
     
+    // حذف آیکون منوی خط‌دار (Hamburger) اگر در HTML وجود داشت
+    const navCta = document.querySelector('.nav-cta');
+    if (navCta) navCta.remove();
+
     const style = document.createElement('style');
     style.innerHTML = `
         #game-screen, #game-screen * {
@@ -1605,7 +1609,7 @@ function initGame() {
             #tutorialBox img { width: 60px !important; height: 60px !important; }
             #tutorialBox p { font-size: 0.8rem !important; line-height: 1.5 !important; }
             #unlockModal, #expeditionResultModal, #migrantModal { width: 90% !important; }
-            #expeditionTracker { right: 10px !important; top: 60px !important; width: 160px !important; }
+            #expeditionTracker { right: 10px !important; top: 120px !important; width: 160px !important; }
             #expeditionTracker div { font-size: 0.8rem !important; }
             #movePopBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; }
             
@@ -1621,11 +1625,24 @@ function initGame() {
             .build-btn, .survey-btn { padding: 5px 10px !important; font-size: 0.75rem !important; }
             .build-image { width: 50px !important; height: 50px !important; }
 
-            /* کوچک کردن نوار بالا و منابع */
-            #top-bar { height: 45px !important; padding: 0 5px !important; }
-            #btnPause { left: 5px !important; }
-            #btnPause img { width: 20px !important; height: 20px !important; }
-            .top-bar-center { gap: 2px !important; }
+            /* چینش هدر بالا در موبایل (دو ردیف: استوپ و لوگو بالا، منابع پایین) */
+            #top-bar { 
+                height: 75px !important; 
+                padding: 5px !important; 
+                flex-wrap: wrap; 
+                align-items: flex-start !important;
+                position: fixed !important; top: 0 !important;
+            }
+            #btnPause { position: absolute !important; top: 15px !important; left: 10px !important; }
+            #btnPause img { width: 24px !important; height: 24px !important; }
+            .top-bar-left { position: absolute !important; top: 15px !important; right: 10px !important; }
+            .top-bar-left img { width: 24px !important; height: 24px !important; }
+            .top-bar-center { 
+                width: 100% !important; 
+                margin-top: 40px !important; 
+                gap: 2px !important;
+                justify-content: center !important;
+            }
             .resource-item { padding: 2px 4px !important; height: 26px !important; gap: 2px !important; }
             .resource-icon { font-size: 0.7rem !important; }
             .resource-label { display: none !important; }
@@ -1634,18 +1651,20 @@ function initGame() {
             .resource-divider { display: none !important; }
 
             /* کوچک کردن پیام‌های ارور */
-            #notification-container { top: 50px !important; }
+            #notification-container { top: 80px !important; }
             .notification { padding: 5px 10px !important; font-size: 0.7rem !important; max-width: 90vw !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
 
-            /* کوچک کردن دکمه روز بعد */
-            #btnNextDay { top: 50px !important; }
+            /* دکمه روز بعد پایین‌تر (پشت منابع) */
+            #btnNextDay { top: 75px !important; }
             #btnNextDay img { width: 32px !important; height: 32px !important; }
 
-            /* کوچک کردن نوار پایین */
-            #bottom-bar { height: 50px !important; }
+            /* نوار پایین فیکس شده در موبایل */
+            #bottom-bar { position: fixed !important; bottom: 0 !important; left: 0 !important; width: 100% !important; height: 50px !important; z-index: 100 !important; background: rgba(10, 14, 26, 0.98) !important; }
             .bottom-btn .btn-icon-large { font-size: 1.1rem !important; }
             .bottom-btn .btn-label { font-size: 0.55rem !important; }
-            #map-container { top: 45px !important; bottom: 50px !important; }
+            
+            /* نقشه بین هدر و نوار پایین */
+            #map-container { top: 115px !important; bottom: 50px !important; }
         }
     `;
     document.head.appendChild(style);
