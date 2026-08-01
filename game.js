@@ -8,8 +8,8 @@ const HOUSE_OFFSET_Y = 25;        // جابجایی بالا و پایین خا�
 const POWERPLANT_OFFSET_Y = 10;   // جابجایی بالا و پایین نیروگاه
 const MUSIC_START_TIME = 15;      // ثانیه شروع موسیقی
 // --- تنظیمات دکمه‌های عکسی ---
-const NEXT_DAY_BTN_TOP = 73;      // فاصله دکمه روز بعد از بالا (پایین هدر)
-const NEXT_DAY_BTN_SIZE = 67;     // اندازه عکس دکمه روز بعد (پیکسل)
+const NEXT_DAY_BTN_TOP = 80;      // فاصله دکمه روز بعد از بالا (پایین هدر)
+const NEXT_DAY_BTN_SIZE = 56;     // اندازه عکس دکمه روز بعد (پیکسل)
 const PAUSE_BTN_SIZE = 32;        // اندازه عکس دکمه استوپ (پیکسل)
 // =================================================================
 
@@ -17,7 +17,7 @@ let bgMusic = null;
 
 const gameState = {
     day: 1, population: 5, fuel: 5, food: 30, wood: 20, stone: 20, heat: 0, hope: 30, satisfaction: 50,
-    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, migrantTargetHouses: [], mouseX: 0, mouseY: 0,
+    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, migrantTargetHouses: [], mouseX: 0, mouseY: 0, currentSaveName: null,
     buildings: [], constructionSites: [], obstacles: [], clearingSites: [],
     hexes: [], hexSize: 45, clickedHex: null,
     HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }],
@@ -46,10 +46,31 @@ houseImg.src = "house.png?t=" + new Date().getTime();
 const powerplantImg = new Image();
 powerplantImg.src = "powerplant.png?t=" + new Date().getTime();
 
-// === سیستم ذخیره و بارگذاری ===
-function saveGame(silent = false) {
+// === سیستم ذخیره و بارگذاری چندگانه ===
+function getAllSaves() {
     try {
-        const saveData = {
+        return JSON.parse(localStorage.getItem('lastWarmthSaves')) || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function hasSavedGame() {
+    return Object.keys(getAllSaves()).length > 0;
+}
+
+function saveGame(silent = false) {
+    if (gameState.gameOver) return false;
+    
+    if (!gameState.currentSaveName) {
+        let name = prompt("یک نام برای ذخیره بازی وارد کنید:");
+        if (!name) return false; // کاربر لغو کرد
+        gameState.currentSaveName = name;
+    }
+
+    try {
+        let saves = getAllSaves();
+        saves[gameState.currentSaveName] = {
             day: gameState.day,
             population: gameState.population,
             fuel: gameState.fuel,
@@ -64,21 +85,21 @@ function saveGame(silent = false) {
             unlockedHexes: gameState.unlockedHexes,
             tutorialStep: gameState.tutorialStep
         };
-        localStorage.setItem('lastWarmthSave', JSON.stringify(saveData));
-        if (!silent) showNotification("بازی ذخیره شد!", "success");
+        localStorage.setItem('lastWarmthSaves', JSON.stringify(saves));
+        if (!silent) showNotification("بازی با موفقیت ذخیره شد!", "success");
+        return true;
     } catch (e) {
         if (!silent) showNotification("خطا در ذخیره بازی!", "error");
+        return false;
     }
 }
 
-function hasSavedGame() {
-    return localStorage.getItem('lastWarmthSave') !== null;
-}
-
-function loadGame() {
+function loadGame(saveName) {
     try {
-        const savedData = JSON.parse(localStorage.getItem('lastWarmthSave'));
+        let saves = getAllSaves();
+        let savedData = saves[saveName];
         if (savedData) {
+            gameState.currentSaveName = saveName;
             gameState.day = savedData.day;
             gameState.population = savedData.population;
             gameState.fuel = savedData.fuel;
@@ -98,8 +119,21 @@ function loadGame() {
     return false;
 }
 
+function deleteGame(saveName) {
+    let saves = getAllSaves();
+    delete saves[saveName];
+    localStorage.setItem('lastWarmthSaves', JSON.stringify(saves));
+}
+
 function showGameOver() {
     gameState.gameOver = true;
+    
+    // حذف ذخیره مربوط به بازی باخته شده
+    if (gameState.currentSaveName) {
+        deleteGame(gameState.currentSaveName);
+        gameState.currentSaveName = null;
+    }
+
     const gs = document.getElementById('game-screen');
     if (gs) gs.style.display = 'none';
     
@@ -116,12 +150,84 @@ function showGameOver() {
         document.body.appendChild(goScreen);
         
         document.getElementById('btnGoMenu').onclick = () => {
-            localStorage.removeItem('lastWarmthSave'); 
             window.location.reload();
         };
     } else {
         goScreen.style.display = 'flex';
     }
+}
+
+function continueGame() {
+    if (!hasSavedGame()) return;
+
+    let saves = getAllSaves();
+    let saveNames = Object.keys(saves);
+
+    let modal = document.getElementById('loadGameModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'loadGameModal';
+        modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; display: none; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;";
+        document.body.appendChild(modal);
+    }
+    
+    let html = `
+        <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; width: 400px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; max-height: 80vh; overflow-y: auto;">
+            <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0; text-align: center;">انتخاب بازی برای ادامه</h3>
+            <div id="saveListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+    `;
+
+    if (saveNames.length === 0) {
+        html += `<p style="color: #aaa; text-align: center;">در حال حاضر بازی ذخیره شده‌ای وجود ندارد.</p>`;
+    } else {
+        saveNames.forEach(name => {
+            let s = saves[name];
+            html += `
+                <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="color: #f5e6c8; font-weight: 700;">${name}</div>
+                        <div style="color: #aaa; font-size: 0.8rem;">روز ${s.day} - جمعیت ${s.population}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="load-save-btn" data-name="${name}" style="padding: 6px 12px; background: #f4d03f; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#000;">شروع</button>
+                        <button class="delete-save-btn" data-name="${name}" style="padding: 6px 12px; background: transparent; border: 1px solid #e74c3c; border-radius: 4px; cursor: pointer; color: #e74c3c;">حذف</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    html += `
+            </div>
+            <button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">بستن</button>
+        </div>
+    `;
+    
+    modal.innerHTML = html;
+    modal.style.display = 'flex';
+
+    document.getElementById('closeLoadModal').onclick = () => {
+        modal.style.display = 'none';
+    };
+
+    document.querySelectorAll('.load-save-btn').forEach(btn => {
+        btn.onclick = () => {
+            let name = btn.getAttribute('data-name');
+            if (loadGame(name)) {
+                modal.style.display = 'none';
+                showStoryScreen();
+                startActualGame();
+            }
+        };
+    });
+
+    document.querySelectorAll('.delete-save-btn').forEach(btn => {
+        btn.onclick = () => {
+            let name = btn.getAttribute('data-name');
+            deleteGame(name);
+            continueGame(); // رفرش کردن لیست
+        };
+    });
 }
 // =================================
 
@@ -579,10 +685,8 @@ function handleMapClick() {
             }
 
             if (sourceHouse.receivedToday) {
-                showAngryMoveModal();
-                gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+                showAngryMoveModal(); // این تابع خودش رضایت رو کم میکنه
                 sourceHouse.receivedToday = false; 
-                updateUI();
                 gameState.isMovingPop = false;
                 return;
             }
@@ -1166,6 +1270,10 @@ function nextDay() {
             return;
         }
         
+        // کسر امید: هر دو نفر یک درصد (کف 1 درصد، رند به بالا برای اعداد فرد)
+        let hopeReduction = Math.ceil(starvedCount / 2);
+        gameState.hope = Math.max(0, gameState.hope - hopeReduction);
+        
         let modal = document.getElementById('starvationModal');
         if (modal) {
             document.getElementById('starvationText').innerText = `به دلیل کمبود غذا، ${starvedCount} نفر از شهروندان جان باختند. لطفاً منابع غذایی رو مدیریت کن!`;
@@ -1323,47 +1431,9 @@ function openMovePopPanel(maxPop) {
 function showAngryMoveModal() {
     const modal = document.getElementById('angryMoveModal');
     if(modal) modal.style.display = 'flex';
-}
-
-function continueGame() {
-    if (!hasSavedGame()) return;
-    loadGame(); 
-
-    if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 17) {
-        let modal = document.getElementById('tutorialPromptModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'tutorialPromptModal';
-            modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; display: flex; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;";
-            modal.innerHTML = `
-                <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; text-align: center; width: 350px; max-width: 90%; display: flex; flex-direction: column; gap: 20px;">
-                    <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0;">در حالت آموزش هستید!</h3>
-                    <p style="color: #e8dcc8; font-size: 0.95rem; margin: 0;">شما وسط آموزش بازی را ترک کرده‌اید. آیا می‌خواهید از همانجا ادامه دهید یا آموزش را از اول ببینید؟</p>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button id="btnContTut" style="padding: 12px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 8px; color: #1a1a2e; font-weight: 700; cursor: pointer;">ادامه آموزش</button>
-                        <button id="btnRestartTut" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 8px; color: #f5e6c8; cursor: pointer;">شروع از اول</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-        modal.style.display = 'flex';
-
-        document.getElementById('btnContTut').onclick = () => {
-            modal.style.display = 'none';
-            showStoryScreen();
-            startActualGame();
-        };
-        document.getElementById('btnRestartTut').onclick = () => {
-            modal.style.display = 'none';
-            gameState.tutorialStep = 1; 
-            showStoryScreen();
-            startActualGame();
-        };
-    } else {
-        showStoryScreen();
-        startActualGame();
-    }
+    gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); // کسر رضایت
+    updateUI();
+    showNotification("۱ درصد رضایت کم شد!", "warning");
 }
 
 function initGame() {
@@ -1388,9 +1458,10 @@ function initGame() {
         bgMusic.play();
     });
 
+    // ذخیره خودکار فقط اگر بازی از قبل اسم داشته باشد (در حال اجرای یک ذخیره باشیم)
     window.addEventListener('beforeunload', function (e) {
         const gs = document.getElementById('game-screen');
-        if (gs && gs.style.display === 'block' && !gameState.gameOver) {
+        if (gs && gs.style.display === 'block' && !gameState.gameOver && gameState.currentSaveName) {
             saveGame(true); 
         }
     });
@@ -1410,7 +1481,10 @@ function initGame() {
         }
     }
 
-    document.getElementById('startBtnHero').onclick = showStoryScreen;
+    document.getElementById('startBtnHero').onclick = () => {
+        gameState.currentSaveName = null; // شروع یک بازی کاملا جدید
+        showStoryScreen();
+    };
     document.getElementById('startActualGameBtn').onclick = startActualGame;
     
     document.getElementById('eventClose').onclick = () => document.getElementById('event-panel').classList.replace('event-panel-visible', 'event-panel-hidden');
@@ -1460,7 +1534,6 @@ function initGame() {
     if (topBar) {
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'btnPause';
-        // دکمه استوپ با عکس نرم شده (border-radius برای گرد کردن گوشه‌های تیز)
         pauseBtn.innerHTML = `<img src="pause_icon.png" style="width: ${PAUSE_BTN_SIZE}px; height: ${PAUSE_BTN_SIZE}px; pointer-events: none; border-radius: 8px; transition: filter 0.2s ease;">`;
         pauseBtn.style.cssText = "position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 0;";
         topBar.appendChild(pauseBtn);
@@ -1471,7 +1544,6 @@ function initGame() {
 
     const nextDayBtn = document.createElement('button');
     nextDayBtn.id = 'btnNextDay';
-    // دکمه روز بعد با عکس بزرگتر و فاصله بیشتر از هدر (با استفاده از متغیرها)
     nextDayBtn.innerHTML = `<img src="next_day_icon.png" style="width: ${NEXT_DAY_BTN_SIZE}px; height: ${NEXT_DAY_BTN_SIZE}px; pointer-events: none; border-radius: 12px; transition: filter 0.2s ease, transform 0.2s ease;">`;
     nextDayBtn.style.cssText = `position: absolute; top: ${NEXT_DAY_BTN_TOP}px; left: 50%; transform: translateX(-50%); background: none; border: none; cursor: pointer; z-index: 55; padding: 0;`;
     document.getElementById('game-screen').appendChild(nextDayBtn);
@@ -1535,7 +1607,7 @@ function initGame() {
     document.getElementById('game-screen').appendChild(complaintModal);
     document.getElementById('complaintBtn').onclick = () => {
         complaintModal.style.display = 'none';
-        gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+        gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); // کسر رضایت
         updateUI();
         showNotification("۱ درصد رضایت کم شد!", "warning");
     };
@@ -1774,10 +1846,12 @@ function initGame() {
 
     document.getElementById('txtResume').onclick = togglePauseMenu;
     document.getElementById('txtExit').onclick = () => {
-        saveGame();
-        setTimeout(() => {
-            window.location.reload();
-        }, 500); 
+        let saved = saveGame(); // اگر بازی جدید باشد، نام می‌پرسد
+        if (saved) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500); 
+        }
     };
     
     document.getElementById('txtSettings1').onclick = () => {
