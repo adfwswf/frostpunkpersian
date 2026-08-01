@@ -1594,6 +1594,12 @@ function initGame() {
             padding: 0 20px !important;
         }
 
+        /* رفع مشکل عدم نمایش نوار پایین در موبایل و مخفی کردن آیکون منوی خراب */
+        html, body { height: 100%; }
+        #game-screen { height: 100vh; height: 100dvh; }
+        #bottom-bar { position: fixed !important; bottom: 0 !important; }
+        .nav-cta { display: none !important; }
+
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
             #dispatchTroopsModal { width: 90% !important; padding: 15px !important; }
