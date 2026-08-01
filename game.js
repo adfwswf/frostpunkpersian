@@ -63,9 +63,8 @@ function saveGame(silent = false) {
     if (gameState.gameOver) return false;
     
     if (!gameState.currentSaveName) {
-        let name = prompt("یک نام برای ذخیره بازی وارد کنید:");
-        if (!name) return false; // کاربر لغو کرد
-        gameState.currentSaveName = name;
+        showSaveNameModal(); // باز کردن کادر شیک برای وارد کردن نام
+        return false; 
     }
 
     try {
@@ -92,6 +91,51 @@ function saveGame(silent = false) {
         if (!silent) showNotification("خطا در ذخیره بازی!", "error");
         return false;
     }
+}
+
+function showSaveNameModal() {
+    let modal = document.getElementById('saveNameModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'saveNameModal';
+        modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 7000; display: none; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;";
+        modal.innerHTML = `
+            <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; width: 350px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; text-align: center;">
+                <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0;">ذخیره بازی جدید</h3>
+                <p style="color: #e8dcc8; font-size: 0.9rem; margin: 0;">لطفاً یک نام برای ذخیره بازی خود وارد کنید:</p>
+                <input type="text" id="saveNameInput" style="width: 100%; padding: 10px; background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; text-align: center; font-family: 'Vazirmatn', sans-serif; font-size: 1rem;" placeholder="مثلا: بازی روز ۱۰">
+                <div style="display: flex; gap: 10px;">
+                    <button id="confirmSaveNameBtn" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer; font-family: 'Vazirmatn', sans-serif;">تایید و خروج</button>
+                    <button id="cancelSaveNameBtn" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer; font-family: 'Vazirmatn', sans-serif;">انصراف</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('confirmSaveNameBtn').onclick = () => {
+            let name = document.getElementById('saveNameInput').value.trim();
+            if (name) {
+                gameState.currentSaveName = name;
+                modal.style.display = 'none';
+                let saved = saveGame(true);
+                if (saved) {
+                    showNotification("بازی ذخیره شد!", "success");
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    showNotification("خطا در ذخیره بازی!", "error");
+                }
+            } else {
+                showNotification("لطفاً یک نام معتبر وارد کنید.", "warning");
+            }
+        };
+
+        document.getElementById('cancelSaveNameBtn').onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+    
+    document.getElementById('saveNameInput').value = "بازی روز " + gameState.day;
+    modal.style.display = 'flex';
 }
 
 function loadGame(saveName) {
@@ -121,14 +165,15 @@ function loadGame(saveName) {
 
 function deleteGame(saveName) {
     let saves = getAllSaves();
-    delete saves[saveName];
-    localStorage.setItem('lastWarmthSaves', JSON.stringify(saves));
+    if (saves[saveName]) {
+        delete saves[saveName];
+        localStorage.setItem('lastWarmthSaves', JSON.stringify(saves));
+    }
 }
 
 function showGameOver() {
     gameState.gameOver = true;
     
-    // حذف ذخیره مربوط به بازی باخته شده
     if (gameState.currentSaveName) {
         deleteGame(gameState.currentSaveName);
         gameState.currentSaveName = null;
@@ -189,8 +234,8 @@ function continueGame() {
                         <div style="color: #aaa; font-size: 0.8rem;">روز ${s.day} - جمعیت ${s.population}</div>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="load-save-btn" data-name="${name}" style="padding: 6px 12px; background: #f4d03f; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#000;">شروع</button>
-                        <button class="delete-save-btn" data-name="${name}" style="padding: 6px 12px; background: transparent; border: 1px solid #e74c3c; border-radius: 4px; cursor: pointer; color: #e74c3c;">حذف</button>
+                        <button class="load-save-btn" data-name="${name}" style="padding: 8px 16px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color:#1a1a2e; font-family: 'Vazirmatn', sans-serif;">شروع</button>
+                        <button class="delete-save-btn" data-name="${name}" style="padding: 8px 16px; background: transparent; border: 1px solid #e74c3c; border-radius: 6px; cursor: pointer; color: #e74c3c; font-family: 'Vazirmatn', sans-serif;">حذف</button>
                     </div>
                 </div>
             `;
@@ -199,7 +244,7 @@ function continueGame() {
 
     html += `
             </div>
-            <button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">بستن</button>
+            <button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer; font-family: 'Vazirmatn', sans-serif;">بستن</button>
         </div>
     `;
     
@@ -224,8 +269,14 @@ function continueGame() {
     document.querySelectorAll('.delete-save-btn').forEach(btn => {
         btn.onclick = () => {
             let name = btn.getAttribute('data-name');
-            deleteGame(name);
-            continueGame(); // رفرش کردن لیست
+            if (confirm("آیا از حذف این بازی مطمئن هستید؟")) {
+                deleteGame(name);
+                if (!hasSavedGame()) {
+                    modal.style.display = 'none'; // بستن کادر اگر بازی‌ای نماند
+                } else {
+                    continueGame(); // رفرش کردن لیست
+                }
+            }
         };
     });
 }
@@ -685,7 +736,7 @@ function handleMapClick() {
             }
 
             if (sourceHouse.receivedToday) {
-                showAngryMoveModal(); // این تابع خودش رضایت رو کم میکنه
+                showAngryMoveModal(); 
                 sourceHouse.receivedToday = false; 
                 gameState.isMovingPop = false;
                 return;
@@ -1270,7 +1321,6 @@ function nextDay() {
             return;
         }
         
-        // کسر امید: هر دو نفر یک درصد (کف 1 درصد، رند به بالا برای اعداد فرد)
         let hopeReduction = Math.ceil(starvedCount / 2);
         gameState.hope = Math.max(0, gameState.hope - hopeReduction);
         
@@ -1431,7 +1481,7 @@ function openMovePopPanel(maxPop) {
 function showAngryMoveModal() {
     const modal = document.getElementById('angryMoveModal');
     if(modal) modal.style.display = 'flex';
-    gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); // کسر رضایت
+    gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); 
     updateUI();
     showNotification("۱ درصد رضایت کم شد!", "warning");
 }
@@ -1458,7 +1508,6 @@ function initGame() {
         bgMusic.play();
     });
 
-    // ذخیره خودکار فقط اگر بازی از قبل اسم داشته باشد (در حال اجرای یک ذخیره باشیم)
     window.addEventListener('beforeunload', function (e) {
         const gs = document.getElementById('game-screen');
         if (gs && gs.style.display === 'block' && !gameState.gameOver && gameState.currentSaveName) {
@@ -1482,7 +1531,7 @@ function initGame() {
     }
 
     document.getElementById('startBtnHero').onclick = () => {
-        gameState.currentSaveName = null; // شروع یک بازی کاملا جدید
+        gameState.currentSaveName = null; 
         showStoryScreen();
     };
     document.getElementById('startActualGameBtn').onclick = startActualGame;
@@ -1492,6 +1541,9 @@ function initGame() {
     const style = document.createElement('style');
     style.innerHTML = `
         #game-screen, #game-screen * {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
+        button, input, select, textarea {
             font-family: 'Vazirmatn', sans-serif !important;
         }
         #tutorialPointer {
@@ -1525,6 +1577,15 @@ function initGame() {
         }
     `;
     document.head.appendChild(style);
+
+    // حذف "گرمایش" از مستطیل پایین صفحه
+    const heatEl = document.getElementById('heat');
+    if (heatEl) {
+        let parent = heatEl.closest('.resource-item') || heatEl.parentElement;
+        if (parent && parent.closest('#bottom-bar')) {
+            parent.style.display = 'none';
+        }
+    }
 
     const pointerDiv = document.createElement('div');
     pointerDiv.id = 'tutorialPointer';
@@ -1607,7 +1668,7 @@ function initGame() {
     document.getElementById('game-screen').appendChild(complaintModal);
     document.getElementById('complaintBtn').onclick = () => {
         complaintModal.style.display = 'none';
-        gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); // کسر رضایت
+        gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); 
         updateUI();
         showNotification("۱ درصد رضایت کم شد!", "warning");
     };
@@ -1846,12 +1907,7 @@ function initGame() {
 
     document.getElementById('txtResume').onclick = togglePauseMenu;
     document.getElementById('txtExit').onclick = () => {
-        let saved = saveGame(); // اگر بازی جدید باشد، نام می‌پرسد
-        if (saved) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 500); 
-        }
+        saveGame(); // اگر بازی جدید باشد، کادر وارد کردن نام باز می‌شود
     };
     
     document.getElementById('txtSettings1').onclick = () => {
