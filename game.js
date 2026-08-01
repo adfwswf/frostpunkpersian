@@ -63,7 +63,7 @@ function saveGame(silent = false) {
     if (gameState.gameOver) return false;
     
     if (!gameState.currentSaveName) {
-        showSaveNameModal(); // باز کردن کادر شیک برای وارد کردن نام
+        showSaveNameModal(); 
         return false; 
     }
 
@@ -272,9 +272,9 @@ function continueGame() {
             if (confirm("آیا از حذف این بازی مطمئن هستید؟")) {
                 deleteGame(name);
                 if (!hasSavedGame()) {
-                    modal.style.display = 'none'; // بستن کادر اگر بازی‌ای نماند
+                    modal.style.display = 'none'; 
                 } else {
-                    continueGame(); // رفرش کردن لیست
+                    continueGame(); 
                 }
             }
         };
@@ -611,28 +611,60 @@ function setupControls() {
     
     canvas.addEventListener('click', () => { if(!gameState.isPaused) handleMapClick(); });
     
+    // --- سیستم لمسی موبایل (یک انگشت جابجایی، دو انگشت زوم) ---
+    let pinchInitialDistance = 0;
+    let pinchInitialZoom = 1;
+
+    function getDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
     canvas.addEventListener('touchstart', e => {
         if (gameState.isPaused) return;
-        if (gameState.isPlacing) {
+        if (gameState.isPlacing && e.touches.length === 1) {
             const rect = canvas.getBoundingClientRect();
             gameState.mouseX = camera.x + ((e.touches[0].clientX - rect.left) / camera.zoom);
             gameState.mouseY = camera.y + ((e.touches[0].clientY - rect.top) / camera.zoom);
             handleMapClick(); return;
         }
-        if (e.touches.length === 1) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            pinchInitialDistance = getDistance(e.touches);
+            pinchInitialZoom = camera.zoom;
+            camera.dragging = false; 
+        } else if (e.touches.length === 1) {
             camera.dragging = true; camera.dragStartX = e.touches[0].clientX; camera.dragStartY = e.touches[0].clientY;
             camera.startCamX = camera.x; camera.startCamY = camera.y;
         }
-    }, { passive: true });
+    }, { passive: false });
+
     canvas.addEventListener('touchmove', e => {
-        if (camera.dragging && e.touches.length === 1) {
+        if (gameState.isPaused) return;
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const currentDistance = getDistance(e.touches);
+            if (pinchInitialDistance > 0) {
+                let zoomFactor = currentDistance / pinchInitialDistance;
+                let newZoom = pinchInitialZoom * zoomFactor;
+                
+                const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect();
+                let minZoom = Math.max(rect.width / mW, rect.height / mH);
+                camera.zoom = Math.max(minZoom, Math.min(2, newZoom));
+            }
+        } else if (camera.dragging && e.touches.length === 1) {
             e.preventDefault();
             camera.x = camera.startCamX - (e.touches[0].clientX - camera.dragStartX) / camera.zoom;
             camera.y = camera.startCamY - (e.touches[0].clientY - camera.dragStartY) / camera.zoom;
         }
     }, { passive: false });
+
     canvas.addEventListener('touchend', (e) => {
-        if (camera.dragging && e.changedTouches.length === 1 && !gameState.isPlacing) {
+        if (e.touches.length < 2) {
+            pinchInitialDistance = 0;
+        }
+        if (camera.dragging && e.changedTouches.length === 1 && !gameState.isPlacing && e.touches.length === 0) {
              const rect = canvas.getBoundingClientRect();
              const tx = e.changedTouches[0].clientX - rect.left, ty = e.changedTouches[0].clientY - rect.top;
              const dx = tx - (camera.dragStartX - rect.left), dy = ty - (camera.dragStartY - rect.top);
@@ -642,7 +674,9 @@ function setupControls() {
                  handleMapClick();
              }
         }
-        camera.dragging = false;
+        if (e.touches.length === 0) {
+            camera.dragging = false;
+        }
     });
 }
 
@@ -1578,13 +1612,13 @@ function initGame() {
     `;
     document.head.appendChild(style);
 
-    // حذف "گرمایش" از مستطیل پایین صفحه
-    const heatEl = document.getElementById('heat');
-    if (heatEl) {
-        let parent = heatEl.closest('.resource-item') || heatEl.parentElement;
-        if (parent && parent.closest('#bottom-bar')) {
-            parent.style.display = 'none';
-        }
+    // حذف دکمه گرمایش از مستطیل پایین صفحه
+    const bottomBar = document.getElementById('bottom-bar');
+    if (bottomBar) {
+        Array.from(bottomBar.children).forEach(btn => {
+            const text = btn.innerText.toLowerCase();
+            if (text.includes('اکتشاف') || text.includes('گرمایش')) btn.remove();
+        });
     }
 
     const pointerDiv = document.createElement('div');
@@ -1620,13 +1654,6 @@ function initGame() {
         img.style.transform = 'scale(1)';
     };
     nextDayBtn.onclick = nextDay;
-
-    const bottomBar = document.getElementById('bottom-bar');
-    if (bottomBar) {
-        Array.from(bottomBar.children).forEach(btn => {
-            if (btn.innerText.includes('اکتشاف')) btn.remove();
-        });
-    }
 
     const exploreBtn = document.createElement('button');
     exploreBtn.className = 'bottom-btn';
@@ -1907,7 +1934,7 @@ function initGame() {
 
     document.getElementById('txtResume').onclick = togglePauseMenu;
     document.getElementById('txtExit').onclick = () => {
-        saveGame(); // اگر بازی جدید باشد، کادر وارد کردن نام باز می‌شود
+        saveGame(); 
     };
     
     document.getElementById('txtSettings1').onclick = () => {
