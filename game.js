@@ -1594,10 +1594,7 @@ function initGame() {
             padding: 0 20px !important;
         }
 
-        /* رفع مشکل عدم نمایش نوار پایین در موبایل و مخفی کردن آیکون منوی خراب */
-        html, body { height: 100%; }
-        #game-screen { height: 100vh; height: 100dvh; }
-        #bottom-bar { position: fixed !important; bottom: 0 !important; }
+        /* حذف آیکون منوی خط‌دار (Hamburger) */
         .nav-cta { display: none !important; }
 
         @media (max-width: 768px) {
@@ -1611,9 +1608,44 @@ function initGame() {
             #expeditionTracker { right: 10px !important; top: 60px !important; width: 160px !important; }
             #expeditionTracker div { font-size: 0.8rem !important; }
             #movePopBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; }
-            #panelExplore .build-item-new { padding: 10px !important; }
-            #panelExplore .build-item-new div { font-size: 0.9rem !important; }
-            #panelExplore .build-item-new button { padding: 8px !important; font-size: 0.9rem !important; }
+            
+            /* کوچک کردن پنل‌های شناور */
+            .floating-panel { width: 90% !important; max-height: 75vh !important; }
+            .panel-header { padding: 8px 12px !important; }
+            .panel-header h3 { font-size: 0.9rem !important; }
+            .panel-body { padding: 10px !important; }
+            .build-item-new { padding: 10px !important; margin-bottom: 10px !important; gap: 8px !important; }
+            .build-info-text { gap: 2px !important; }
+            .build-name { font-size: 0.9rem !important; }
+            .build-info-text > div { font-size: 0.7rem !important; }
+            .build-btn, .survey-btn { padding: 5px 10px !important; font-size: 0.75rem !important; }
+            .build-image { width: 50px !important; height: 50px !important; }
+
+            /* کوچک کردن نوار بالا و منابع */
+            #top-bar { height: 45px !important; padding: 0 5px !important; }
+            #btnPause { left: 5px !important; }
+            #btnPause img { width: 20px !important; height: 20px !important; }
+            .top-bar-center { gap: 2px !important; }
+            .resource-item { padding: 2px 4px !important; height: 26px !important; gap: 2px !important; }
+            .resource-icon { font-size: 0.7rem !important; }
+            .resource-label { display: none !important; }
+            .resource-value { font-size: 0.65rem !important; min-width: 10px !important; }
+            .resource-bar-container { width: 20px !important; height: 3px !important; }
+            .resource-divider { display: none !important; }
+
+            /* کوچک کردن پیام‌های ارور */
+            #notification-container { top: 50px !important; }
+            .notification { padding: 5px 10px !important; font-size: 0.7rem !important; max-width: 90vw !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+
+            /* کوچک کردن دکمه روز بعد */
+            #btnNextDay { top: 50px !important; }
+            #btnNextDay img { width: 32px !important; height: 32px !important; }
+
+            /* کوچک کردن نوار پایین */
+            #bottom-bar { height: 50px !important; }
+            .bottom-btn .btn-icon-large { font-size: 1.1rem !important; }
+            .bottom-btn .btn-label { font-size: 0.55rem !important; }
+            #map-container { top: 45px !important; bottom: 50px !important; }
         }
     `;
     document.head.appendChild(style);
