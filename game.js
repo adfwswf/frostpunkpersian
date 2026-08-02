@@ -615,7 +615,12 @@ function setupControls() {
         camera.zoom = Math.max(minZoom, Math.min(2, newZoom));
     }, { passive: false });
     
-    canvas.addEventListener('click', () => { if(!gameState.isPaused) handleMapClick(); });
+    // جلوگیری از کلیک‌های فانتوم (Ghost Click) در موبایل
+    let touchHandled = false;
+    canvas.addEventListener('click', () => {
+        if (touchHandled) { touchHandled = false; return; }
+        if(!gameState.isPaused) handleMapClick();
+    });
     
     // --- سیستم لمسی موبایل (یک انگشت جابجایی، دو انگشت زوم) ---
     let pinchInitialDistance = 0;
@@ -630,10 +635,13 @@ function setupControls() {
     canvas.addEventListener('touchstart', e => {
         if (gameState.isPaused) return;
         if (gameState.isPlacing && e.touches.length === 1) {
+            e.preventDefault();
             const rect = canvas.getBoundingClientRect();
             gameState.mouseX = camera.x + ((e.touches[0].clientX - rect.left) / camera.zoom);
             gameState.mouseY = camera.y + ((e.touches[0].clientY - rect.top) / camera.zoom);
-            handleMapClick(); return;
+            handleMapClick(); 
+            touchHandled = true;
+            return;
         }
         if (e.touches.length === 2) {
             e.preventDefault();
@@ -678,6 +686,7 @@ function setupControls() {
                  gameState.mouseX = camera.x + (tx / camera.zoom);
                  gameState.mouseY = camera.y + (ty / camera.zoom);
                  handleMapClick();
+                 touchHandled = true;
              }
         }
         if (e.touches.length === 0) {
@@ -921,7 +930,7 @@ function handleMapClick() {
         else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning");
         else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning");
         else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning");
-        else showNotification("لطفاً طبق آموزش پیش برو!", "warning");
+        else showNotification("فعلاً طبق آموزش پیش برو!", "warning");
         return;
     }
 }
@@ -1067,7 +1076,9 @@ function updateTutorialBox() {
         box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none';
     } else if (gameState.tutorialStep === 15) {
         txt.innerHTML = "همونطور که می‌بینی، نمی‌تونی همه آدم‌ها رو انتقال بدی. حداقل یک نفر (یعنی خودت!) باید تو خونه بمونه. پس ۱ تا ۴ نفر رو انتخاب کن و بعد روی دکمه «انتقال» بزن.";
-        btn.style.display = 'none'; pointer.style.display = 'none';
+        btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
+        pointer.style.display = 'none';
+        btn.onclick = () => { box.style.display = 'none'; };
     } else if (gameState.tutorialStep === 16) {
         txt.innerHTML = "حالا روی خونه جدیدت کلیک کن تا آدم‌ها اونجا مستقر بشن.";
         btn.style.display = 'none'; pointer.style.display = 'none';
