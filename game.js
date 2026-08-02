@@ -1572,10 +1572,6 @@ function initGame() {
     
     document.getElementById('eventClose').onclick = () => document.getElementById('event-panel').classList.replace('event-panel-visible', 'event-panel-hidden');
     
-    // حذف آیکون منوی خط‌دار (Hamburger) اگر در HTML وجود داشت
-    const navCta = document.querySelector('.nav-cta');
-    if (navCta) navCta.remove();
-
     const style = document.createElement('style');
     style.innerHTML = `
         #game-screen, #game-screen * {
@@ -2101,13 +2097,12 @@ function initGame() {
             showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; 
         }
 
-        let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0);
-        if (!mainHouse || mainHouse.pop <= 1) {
-            showNotification("شهروند کافی برای اعزام ندارید! (حداقل ۲ نفر در خونه اصلی لازم است)", "warning");
+        if (gameState.population <= 1) {
+            showNotification("شهروند کافی برای اعزام ندارید! (حداقل ۲ نفر در کل بازی لازم است)", "warning");
             panelExplore.classList.remove('panel-open');
             return;
         }
-        const maxTroops = mainHouse.pop - 1;
+        const maxTroops = Math.max(1, gameState.population - 1);
 
         if (gameState.tutorialStep === 6) {
             gameState.tutorialStep = 7;
