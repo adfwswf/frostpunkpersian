@@ -8,9 +8,12 @@ const HOUSE_OFFSET_Y = 25;        // جابجایی بالا و پایین خا�
 const POWERPLANT_OFFSET_Y = 10;   // جابجایی بالا و پایین نیروگاه
 const MUSIC_START_TIME = 15;      // ثانیه شروع موسیقی
 // --- تنظیمات دکمه‌های عکسی ---
-const NEXT_DAY_BTN_TOP = 80;      // فاصله دکمه روز بعد از بالا (پایین هدر)
-const NEXT_DAY_BTN_SIZE = 56;     // اندازه عکس دکمه روز بعد (پیکسل)
+const NEXT_DAY_BTN_TOP = 80;      // فاصله دکمه روز بعد از بالا (پایین هدر) در دسکتاپ
+const NEXT_DAY_BTN_SIZE = 56;     // اندازه عکس دکمه روز بعد (پیکسل) در دسکتاپ
 const PAUSE_BTN_SIZE = 32;        // اندازه عکس دکمه استوپ (پیکسل)
+// --- تنظیمات مخصوص موبایل برای دکمه روز بعد ---
+const MOBILE_NEXT_DAY_BTN_TOP = 138;  // فاصله دکمه روز بعد از بالا (فقط برای موبایل)
+const MOBILE_NEXT_DAY_BTN_SIZE = 48; // اندازه عکس دکمه روز بعد (فقط برای موبایل)
 // =================================================================
 
 let bgMusic = null; 
@@ -59,11 +62,11 @@ function hasSavedGame() {
     return Object.keys(getAllSaves()).length > 0;
 }
 
-function saveGame(silent = false) {
+function saveGame(silent = false, exitAfter = false) {
     if (gameState.gameOver) return false;
     
     if (!gameState.currentSaveName) {
-        showSaveNameModal(); 
+        showSaveNameModal(exitAfter); 
         return false; 
     }
 
@@ -85,7 +88,13 @@ function saveGame(silent = false) {
             tutorialStep: gameState.tutorialStep
         };
         localStorage.setItem('lastWarmthSaves', JSON.stringify(saves));
-        if (!silent) showNotification("بازی با موفقیت ذخیره شد!", "success");
+        
+        if (exitAfter) {
+            showNotification("بازی ذخیره شد و به منوی اصلی بازگشتید...", "info");
+            setTimeout(() => window.location.reload(), 1500);
+        } else if (!silent) {
+            showNotification("بازی با موفقیت ذخیره شد!", "success");
+        }
         return true;
     } catch (e) {
         if (!silent) showNotification("خطا در ذخیره بازی!", "error");
@@ -93,19 +102,19 @@ function saveGame(silent = false) {
     }
 }
 
-function showSaveNameModal() {
+function showSaveNameModal(exitAfter = false) {
     let modal = document.getElementById('saveNameModal');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'saveNameModal';
         modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 7000; display: none; justify-content: center; align-items: center; font-family: 'Vazirmatn', sans-serif;";
         modal.innerHTML = `
-            <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; width: 350px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; text-align: center;">
+            <div style="background: rgba(10,14,26,0.98); padding: 30px; border-radius: 16px; border: 1px solid #f4d03f; width: 350px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; text-align: center; box-shadow: 0 0 30px rgba(244, 208, 63, 0.2);">
                 <h3 style="color: #f4d03f; font-size: 1.2rem; margin: 0;">ذخیره بازی جدید</h3>
-                <p style="color: #e8dcc8; font-size: 0.9rem; margin: 0;">لطفاً یک نام برای ذخیره بازی خود وارد کنید:</p>
-                <input type="text" id="saveNameInput" style="width: 100%; padding: 10px; background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; text-align: center; font-family: 'Vazirmatn', sans-serif; font-size: 1rem;" placeholder="مثلا: بازی روز ۱۰">
+                <p style="color: #e8dcc8; font-size: 0.95rem; margin: 0; line-height: 1.6;">برای اینکه بعدا دوباره بیای و بقیه بازیات رو ادامه بدی، نامی زیبا برای ذخیره‌ات انتخاب کن:</p>
+                <input type="text" id="saveNameInput" style="width: 100%; padding: 10px; background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; text-align: center; font-family: 'Vazirmatn', sans-serif; font-size: 1rem;" placeholder="مثلا: سفرنامه روز دهم">
                 <div style="display: flex; gap: 10px;">
-                    <button id="confirmSaveNameBtn" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer; font-family: 'Vazirmatn', sans-serif;">تایید و خروج</button>
+                    <button id="confirmSaveNameBtn" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer; font-family: 'Vazirmatn', sans-serif;">تایید و ذخیره</button>
                     <button id="cancelSaveNameBtn" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer; font-family: 'Vazirmatn', sans-serif;">انصراف</button>
                 </div>
             </div>
@@ -117,12 +126,9 @@ function showSaveNameModal() {
             if (name) {
                 gameState.currentSaveName = name;
                 modal.style.display = 'none';
-                let saved = saveGame(true);
-                if (saved) {
-                    showNotification("بازی ذخیره شد!", "success");
-                    setTimeout(() => window.location.reload(), 500);
-                } else {
-                    showNotification("خطا در ذخیره بازی!", "error");
+                let saved = saveGame(true, exitAfter);
+                if (saved && !exitAfter) {
+                    showNotification("بازی با موفقیت ذخیره شد!", "success");
                 }
             } else {
                 showNotification("لطفاً یک نام معتبر وارد کنید.", "warning");
@@ -134,7 +140,7 @@ function showSaveNameModal() {
         };
     }
     
-    document.getElementById('saveNameInput').value = "بازی روز " + gameState.day;
+    document.getElementById('saveNameInput').value = "سفرنامه روز " + gameState.day;
     modal.style.display = 'flex';
 }
 
@@ -1410,6 +1416,16 @@ function updateUI() {
                 let percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
                 barEl.style.width = percentage + '%';
             }
+            
+            // اضافه کردن یک المان نامرئی برای شکستن خط و انتقال دما، امید و رضایت به ردیف دوم در موبایل
+            if (id === 'heat') {
+                const parent = valEl.parentElement;
+                if (parent && (!parent.previousElementSibling || !parent.previousElementSibling.classList.contains('mobile-line-break'))) {
+                    const lineBreak = document.createElement('div');
+                    lineBreak.className = 'mobile-line-break';
+                    parent.parentNode.insertBefore(lineBreak, parent);
+                }
+            }
         }
     };
 
@@ -1470,6 +1486,19 @@ function startActualGame() {
     updateTutorialBox();
     
     if (!mapAnimId) { function anim() { drawMap(); mapAnimId = requestAnimationFrame(anim); } anim(); }
+    
+    // تنظیم دقیق فاصله نقشه از هدر برای جلوگیری از جای خالی
+    adjustMapTop();
+}
+
+// تابعی برای تنظیم دقیق فاصله نقشه از بالا (فوق هدر)
+function adjustMapTop() {
+    const topBar = document.getElementById('top-bar');
+    const mapContainer = document.getElementById('map-container');
+    if (topBar && mapContainer) {
+        // برای جلوگیری از جای خالی، دقیقاً هم‌اندازه هدر تنظیم می‌شود
+        mapContainer.style.top = topBar.offsetHeight + 'px';
+    }
 }
 
 function closeAllPanels(exceptId) {
@@ -1588,14 +1617,34 @@ function initGame() {
         }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
+        /* تنظیمات دسکتاپ: ارتفاع هدر اتوماتیک برای حذف جای خالی */
+        #top-bar { 
+            height: auto !important; 
+            min-height: 0 !important;
+            padding: 8px 15px !important;
+            align-items: center !important;
+            border-bottom: none !important; 
+        }
         .top-bar-center {
-            justify-content: center !important;
-            width: 100% !important;
+            position: relative;
             padding: 0 20px !important;
+            justify-content: center !important;
+            flex: 1 !important;
         }
 
-        /* حذف آیکون منوی خط‌دار (Hamburger) */
-        .nav-cta { display: none !important; }
+        /* اصلاح آیکون‌های استیکری در دسکتاپ (کوچک کردن کامل بدون برش) */
+        .resource-icon {
+            font-size: 0.9rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .mobile-line-break { 
+            display: none !important; 
+        }
 
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
@@ -1605,11 +1654,10 @@ function initGame() {
             #tutorialBox img { width: 60px !important; height: 60px !important; }
             #tutorialBox p { font-size: 0.8rem !important; line-height: 1.5 !important; }
             #unlockModal, #expeditionResultModal, #migrantModal { width: 90% !important; }
-            #expeditionTracker { right: 10px !important; top: 120px !important; width: 160px !important; }
+            #expeditionTracker { right: 10px !important; top: 140px !important; width: 160px !important; }
             #expeditionTracker div { font-size: 0.8rem !important; }
             #movePopBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; }
             
-            /* کوچک کردن پنل‌های شناور */
             .floating-panel { width: 90% !important; max-height: 75vh !important; }
             .panel-header { padding: 8px 12px !important; }
             .panel-header h3 { font-size: 0.9rem !important; }
@@ -1623,49 +1671,89 @@ function initGame() {
 
             /* چینش هدر بالا در موبایل (دو ردیف: استوپ و لوگو بالا، منابع پایین) */
             #top-bar { 
-                height: 75px !important; 
-                padding: 5px !important; 
-                flex-wrap: wrap; 
+                height: auto !important; 
+                min-height: 0 !important;
+                padding: 0 !important; 
+                flex-wrap: wrap !important; 
                 align-items: flex-start !important;
                 position: fixed !important; top: 0 !important;
+                background: rgba(10, 14, 26, 0.98) !important;
+                border-bottom: none !important; 
             }
-            #btnPause { position: absolute !important; top: 15px !important; left: 10px !important; }
+            
+            /* ردیف اول: استوپ و اجاق */
+            #btnPause { 
+                position: absolute !important; 
+                top: 0 !important; 
+                left: 0 !important;
+                height: 40px !important;
+                width: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                transform: none !important;
+            }
             #btnPause img { width: 24px !important; height: 24px !important; }
-            .top-bar-left { position: absolute !important; top: 15px !important; right: 10px !important; }
+            
+            .top-bar-left { 
+                position: absolute !important; 
+                top: 0 !important; 
+                right: 0 !important;
+                height: 40px !important;
+                padding: 0 10px !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+            }
             .top-bar-left img { width: 24px !important; height: 24px !important; }
+
+            /* ردیف دوم: منابع */
             .top-bar-center { 
                 width: 100% !important; 
                 margin-top: 40px !important; 
-                gap: 2px !important;
+                padding: 8px 5px !important;
+                border-top: 1px solid rgba(244, 208, 63, 0.3) !important; /* خط جداکننده افقی زیبا */
                 justify-content: center !important;
+                flex-wrap: wrap !important;
             }
-            .resource-item { padding: 2px 4px !important; height: 26px !important; gap: 2px !important; }
-            .resource-icon { font-size: 0.7rem !important; }
+
+            .resource-item { padding: 2px 6px !important; height: auto !important; gap: 2px !important; margin-bottom: 4px !important; }
+            
+            /* اصلاح آیکون‌های استیکری در موبایل (کوچک کردن کامل بدون برش) */
+            .resource-icon { 
+                font-size: 0.8rem !important; 
+                line-height: 1 !important;
+            }
+
             .resource-label { display: none !important; }
             .resource-value { font-size: 0.65rem !important; min-width: 10px !important; }
-            .resource-bar-container { width: 20px !important; height: 3px !important; }
+            .resource-bar-container { width: 25px !important; height: 3px !important; display: block !important; }
             .resource-divider { display: none !important; }
 
-            /* کوچک کردن پیام‌های ارور */
-            #notification-container { top: 80px !important; }
+            /* خط شکن برای انتقال دما، امید و رضایت به ردیف دوم در موبایل */
+            .mobile-line-break { 
+                display: block !important; 
+                flex-basis: 100% !important; 
+                height: 0 !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
+
+            #notification-container { top: 140px !important; }
             .notification { padding: 5px 10px !important; font-size: 0.7rem !important; max-width: 90vw !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
 
-            /* دکمه روز بعد پایین‌تر (پشت منابع) */
-            #btnNextDay { top: 75px !important; }
-            #btnNextDay img { width: 32px !important; height: 32px !important; }
+            #btnNextDay { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; outline: none !important; }
+            #btnNextDay img { background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; }
 
-            /* نوار پایین فیکس شده در موبایل */
             #bottom-bar { position: fixed !important; bottom: 0 !important; left: 0 !important; width: 100% !important; height: 50px !important; z-index: 100 !important; background: rgba(10, 14, 26, 0.98) !important; }
             .bottom-btn .btn-icon-large { font-size: 1.1rem !important; }
             .bottom-btn .btn-label { font-size: 0.55rem !important; }
             
-            /* نقشه بین هدر و نوار پایین */
-            #map-container { top: 115px !important; bottom: 50px !important; }
+            #map-container { bottom: 50px !important; }
         }
     `;
     document.head.appendChild(style);
 
-    // حذف دکمه گرمایش از مستطیل پایین صفحه
     const bottomBar = document.getElementById('bottom-bar');
     if (bottomBar) {
         Array.from(bottomBar.children).forEach(btn => {
@@ -1692,8 +1780,8 @@ function initGame() {
 
     const nextDayBtn = document.createElement('button');
     nextDayBtn.id = 'btnNextDay';
-    nextDayBtn.innerHTML = `<img src="next_day_icon.png" style="width: ${NEXT_DAY_BTN_SIZE}px; height: ${NEXT_DAY_BTN_SIZE}px; pointer-events: none; border-radius: 12px; transition: filter 0.2s ease, transform 0.2s ease;">`;
-    nextDayBtn.style.cssText = `position: absolute; top: ${NEXT_DAY_BTN_TOP}px; left: 50%; transform: translateX(-50%); background: none; border: none; cursor: pointer; z-index: 55; padding: 0;`;
+    nextDayBtn.innerHTML = `<img src="next_day_icon.png" style="width: ${NEXT_DAY_BTN_SIZE}px; height: ${NEXT_DAY_BTN_SIZE}px; pointer-events: none; border-radius: 12px; transition: filter 0.2s ease, transform 0.2s ease; background: transparent;">`;
+    nextDayBtn.style.cssText = `position: absolute; top: ${NEXT_DAY_BTN_TOP}px; left: 50%; transform: translateX(-50%); background: none; border: none; cursor: pointer; z-index: 55; padding: 0; box-shadow: none; outline: none;`;
     document.getElementById('game-screen').appendChild(nextDayBtn);
     
     nextDayBtn.onmouseover = () => {
@@ -1707,6 +1795,30 @@ function initGame() {
         img.style.transform = 'scale(1)';
     };
     nextDayBtn.onclick = nextDay;
+
+    window.applyNextDayMobileStyle = function() {
+        const isMobile = window.innerWidth <= 768;
+        const btn = document.getElementById('btnNextDay');
+        if (btn) {
+            const img = btn.querySelector('img');
+            if (isMobile) {
+                btn.style.top = MOBILE_NEXT_DAY_BTN_TOP + 'px';
+                if (img) {
+                    img.style.width = MOBILE_NEXT_DAY_BTN_SIZE + 'px';
+                    img.style.height = MOBILE_NEXT_DAY_BTN_SIZE + 'px';
+                }
+            } else {
+                btn.style.top = NEXT_DAY_BTN_TOP + 'px';
+                if (img) {
+                    img.style.width = NEXT_DAY_BTN_SIZE + 'px';
+                    img.style.height = NEXT_DAY_BTN_SIZE + 'px';
+                }
+            }
+        }
+        adjustMapTop(); 
+    };
+    window.applyNextDayMobileStyle();
+    window.addEventListener('resize', window.applyNextDayMobileStyle);
 
     const exploreBtn = document.createElement('button');
     exploreBtn.className = 'bottom-btn';
@@ -1987,7 +2099,7 @@ function initGame() {
 
     document.getElementById('txtResume').onclick = togglePauseMenu;
     document.getElementById('txtExit').onclick = () => {
-        saveGame(); 
+        saveGame(false, true);
     };
     
     document.getElementById('txtSettings1').onclick = () => {
