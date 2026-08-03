@@ -615,12 +615,7 @@ function setupControls() {
         camera.zoom = Math.max(minZoom, Math.min(2, newZoom));
     }, { passive: false });
     
-    // جلوگیری از کلیک‌های فانتوم (Ghost Click) در موبایل
-    let touchHandled = false;
-    canvas.addEventListener('click', () => {
-        if (touchHandled) { touchHandled = false; return; }
-        if(!gameState.isPaused) handleMapClick();
-    });
+    canvas.addEventListener('click', () => { if(!gameState.isPaused) handleMapClick(); });
     
     // --- سیستم لمسی موبایل (یک انگشت جابجایی، دو انگشت زوم) ---
     let pinchInitialDistance = 0;
@@ -635,13 +630,10 @@ function setupControls() {
     canvas.addEventListener('touchstart', e => {
         if (gameState.isPaused) return;
         if (gameState.isPlacing && e.touches.length === 1) {
-            e.preventDefault();
             const rect = canvas.getBoundingClientRect();
             gameState.mouseX = camera.x + ((e.touches[0].clientX - rect.left) / camera.zoom);
             gameState.mouseY = camera.y + ((e.touches[0].clientY - rect.top) / camera.zoom);
-            handleMapClick(); 
-            touchHandled = true;
-            return;
+            handleMapClick(); return;
         }
         if (e.touches.length === 2) {
             e.preventDefault();
@@ -686,7 +678,6 @@ function setupControls() {
                  gameState.mouseX = camera.x + (tx / camera.zoom);
                  gameState.mouseY = camera.y + (ty / camera.zoom);
                  handleMapClick();
-                 touchHandled = true;
              }
         }
         if (e.touches.length === 0) {
@@ -930,7 +921,7 @@ function handleMapClick() {
         else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning");
         else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning");
         else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning");
-        else showNotification("فعلاً طبق آموزش پیش برو!", "warning");
+        else showNotification("لطفاً طبق آموزش پیش برو!", "warning");
         return;
     }
 }
@@ -1076,9 +1067,7 @@ function updateTutorialBox() {
         box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none';
     } else if (gameState.tutorialStep === 15) {
         txt.innerHTML = "همونطور که می‌بینی، نمی‌تونی همه آدم‌ها رو انتقال بدی. حداقل یک نفر (یعنی خودت!) باید تو خونه بمونه. پس ۱ تا ۴ نفر رو انتخاب کن و بعد روی دکمه «انتقال» بزن.";
-        btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم";
-        pointer.style.display = 'none';
-        btn.onclick = () => { box.style.display = 'none'; };
+        btn.style.display = 'none'; pointer.style.display = 'none';
     } else if (gameState.tutorialStep === 16) {
         txt.innerHTML = "حالا روی خونه جدیدت کلیک کن تا آدم‌ها اونجا مستقر بشن.";
         btn.style.display = 'none'; pointer.style.display = 'none';
@@ -1219,7 +1208,7 @@ function updateRequests() {
             if (!existingDiv) {
                 let div = document.createElement('div');
                 div.setAttribute('data-req-id', reqIdStr);
-                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px.";
+                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;";
                 div.innerHTML = `
                     <div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">${req.count} نفر در انتظار پذیرش</div>
                     <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
@@ -1728,27 +1717,12 @@ function initGame() {
                 flex-wrap: wrap !important;
             }
 
-            .resource-item { 
-                padding: 2px 6px !important; 
-                height: 26px !important; /* ارتفاع ثابت برای یکدست شدن کادرها */
-                gap: 2px !important; 
-                margin-bottom: 4px !important; 
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                white-space: nowrap !important;
-            }
+            .resource-item { padding: 2px 6px !important; height: auto !important; gap: 2px !important; margin-bottom: 4px !important; }
             
-            /* اصلاح ایموجی‌های بزرگتر (چوب و سنگ) در موبایل */
+            /* اصلاح آیکون‌های استیکری در موبایل (کوچک کردن کامل بدون برش) */
             .resource-icon { 
-                font-size: 0.75rem !important; 
+                font-size: 0.8rem !important; 
                 line-height: 1 !important;
-                width: 14px !important; 
-                height: 14px !important; 
-                overflow: hidden !important;
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: center !important;
             }
 
             .resource-label { display: none !important; }
