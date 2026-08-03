@@ -1219,7 +1219,7 @@ function updateRequests() {
             if (!existingDiv) {
                 let div = document.createElement('div');
                 div.setAttribute('data-req-id', reqIdStr);
-                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;";
+                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px.";
                 div.innerHTML = `
                     <div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">${req.count} نفر در انتظار پذیرش</div>
                     <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
@@ -1728,12 +1728,27 @@ function initGame() {
                 flex-wrap: wrap !important;
             }
 
-            .resource-item { padding: 2px 6px !important; height: auto !important; gap: 2px !important; margin-bottom: 4px !important; }
+            .resource-item { 
+                padding: 2px 6px !important; 
+                height: 26px !important; /* ارتفاع ثابت برای یکدست شدن کادرها */
+                gap: 2px !important; 
+                margin-bottom: 4px !important; 
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important;
+            }
             
-            /* اصلاح آیکون‌های استیکری در موبایل (کوچک کردن کامل بدون برش) */
+            /* اصلاح ایموجی‌های بزرگتر (چوب و سنگ) در موبایل */
             .resource-icon { 
-                font-size: 0.8rem !important; 
+                font-size: 0.75rem !important; 
                 line-height: 1 !important;
+                width: 14px !important; 
+                height: 14px !important; 
+                overflow: hidden !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
 
             .resource-label { display: none !important; }
