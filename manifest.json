@@ -1,0 +1,17 @@
+{
+  "name": "آخرین گرما",
+  "short_name": "آخرین گرما",
+  "description": "بازی استراتژیک آخرین گرما",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
