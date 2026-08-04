@@ -10,23 +10,28 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <style>
-    /* جلوگیری از پرش و تغییر دکمه‌ها هنگام لود سایت */
+    /* استایل پیش‌فرض دکمه‌ها برای جلوگیری از پرش هنگام لود */
     .nav-cta {
         background: linear-gradient(135deg, #8e44ad, #9b59b6) !important;
         border: 1px solid #9b59b6 !important;
         color: #fff !important;
+        padding: 8px 16px !important;
+        border-radius: 4px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
         display: inline-block;
         text-decoration: none;
     }
     .hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 15px;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 15px !important;
     }
     .hero-actions .btn-primary {
-        min-width: 200px;
-        text-align: center;
+        min-width: 220px !important;
+        text-align: center !important;
+        margin-right: 0 !important;
     }
 </style>
 </head>
@@ -35,7 +40,7 @@
 <!-- === هدر === -->
 <header id="siteHeader">
   <nav>
-    <a href="#" class="nav-cta">دانلود بازی</a>
+    <a href="#" class="nav-cta">نصب بازی</a>
     <ul class="nav-links" id="navLinks">
       <li><a href="#hero">خانه</a></li>
       <li><a href="#features">ویژگی‌ها</a></li>
