@@ -464,9 +464,9 @@ function setupControls() {
         camera.zoom = Math.max(minZoom, Math.min(2, newZoom));
     }, { passive: false });
     
-    let touchHandled = false;
-    canvas.addEventListener('click', () => {
-        if (touchHandled) { touchHandled = false; return; }
+    // جلوگیری قطعی از کلیک‌های فانتوم (Ghost Click) در موبایل
+    canvas.addEventListener('click', (e) => {
+        e.preventDefault();
         if(!gameState.isPaused) handleMapClick();
     });
     
@@ -479,15 +479,15 @@ function setupControls() {
 
     canvas.addEventListener('touchstart', e => {
         if (gameState.isPaused) return;
+        e.preventDefault(); // جلوگیری از کلیک فانتوم
         if (gameState.isPlacing && e.touches.length === 1) {
-            e.preventDefault();
             const rect = canvas.getBoundingClientRect();
             gameState.mouseX = camera.x + ((e.touches[0].clientX - rect.left) / camera.zoom);
             gameState.mouseY = camera.y + ((e.touches[0].clientY - rect.top) / camera.zoom);
-            handleMapClick(); touchHandled = true; return;
+            handleMapClick(); 
+            return;
         }
         if (e.touches.length === 2) {
-            e.preventDefault();
             pinchInitialDistance = getDistance(e.touches);
             pinchInitialZoom = camera.zoom; camera.dragging = false; 
         } else if (e.touches.length === 1) {
@@ -498,8 +498,8 @@ function setupControls() {
 
     canvas.addEventListener('touchmove', e => {
         if (gameState.isPaused) return;
+        e.preventDefault(); // جلوگیری از اسکرول صفحه
         if (e.touches.length === 2) {
-            e.preventDefault();
             const currentDistance = getDistance(e.touches);
             if (pinchInitialDistance > 0) {
                 let zoomFactor = currentDistance / pinchInitialDistance;
@@ -509,13 +509,13 @@ function setupControls() {
                 camera.zoom = Math.max(minZoom, Math.min(2, newZoom));
             }
         } else if (camera.dragging && e.touches.length === 1) {
-            e.preventDefault();
             camera.x = camera.startCamX - (e.touches[0].clientX - camera.dragStartX) / camera.zoom;
             camera.y = camera.startCamY - (e.touches[0].clientY - camera.dragStartY) / camera.zoom;
         }
     }, { passive: false });
 
     canvas.addEventListener('touchend', (e) => {
+        e.preventDefault(); // جلوگیری از کلیک فانتوم
         if (e.touches.length < 2) pinchInitialDistance = 0;
         if (camera.dragging && e.changedTouches.length === 1 && !gameState.isPlacing && e.touches.length === 0) {
              const rect = canvas.getBoundingClientRect();
@@ -524,11 +524,11 @@ function setupControls() {
              if(Math.sqrt(dx*dx + dy*dy) < 5) {
                  gameState.mouseX = camera.x + (tx / camera.zoom);
                  gameState.mouseY = camera.y + (ty / camera.zoom);
-                 handleMapClick(); touchHandled = true;
+                 handleMapClick(); 
              }
         }
         if (e.touches.length === 0) camera.dragging = false;
-    });
+    }, { passive: false });
 }
 
 function togglePauseMenu() {
@@ -1182,7 +1182,6 @@ function initGame() {
             continueBtn.onclick = continueGame;
             heroActions.insertBefore(continueBtn, startBtnHero);
         }
-        // دکمه نصب بازی پایین حذف شد
     }
 
     // === اتصال دکمه نصب به گوشه بالا سمت چپ ===
