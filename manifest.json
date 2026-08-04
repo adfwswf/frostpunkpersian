@@ -1,24 +1,49 @@
 {
+  "id": "/?source=pwa",
   "name": "آخرین گرما",
   "short_name": "آخرین گرما",
-  "description": "بازی استراتژیک آخرین گرما",
-  "start_url": "./",
+  "description": "بازی استراتژیک آخرین گرما در سرمای سهم‌گین",
+  "start_url": "./?source=pwa",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
-  "orientation": "any",
+  "lang": "fa",
+  "dir": "rtl",
+  "categories": ["games", "strategy"],
   "icons": [
     {
       "src": "icon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
