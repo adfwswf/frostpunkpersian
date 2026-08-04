@@ -1,8 +1,7 @@
 {
-  "id": "/?source=pwa",
   "name": "آخرین گرما",
   "short_name": "آخرین گرما",
-  "description": "بازی استراتژیک آخرین گرما در سرمای سهم‌گین",
+  "description": "بازی استراتژیک آخرین گرما",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
