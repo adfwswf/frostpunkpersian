@@ -1,4 +1,4 @@
-const CACHE_NAME = 'last-warmth-v1';
+const CACHE_NAME = 'last-warmth-v2';
 const urlsToCache = [
   './',
   './index.html',
