@@ -21,7 +21,7 @@ let deferredPrompt = null;
 
 const gameState = {
     day: 1, population: 5, fuel: 5, food: 30, wood: 20, stone: 20, heat: 0, hope: 30, satisfaction: 50,
-    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', placingSelectedHex: null, isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, migrantTargetHouses: [], mouseX: 0, mouseY: 0, currentSaveName: null,
+    gameOver: false, isPaused: false, isPlacing: false, placingType: 'house', isMovingPop: false, isPlacingMigrants: false, migrantsToPlace: 0, migrantTargetHouses: [], mouseX: 0, mouseY: 0, currentSaveName: null,
     buildings: [], constructionSites: [], obstacles: [], clearingSites: [],
     hexes: [], hexSize: 45, clickedHex: null,
     HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }],
@@ -41,7 +41,6 @@ const gameState = {
 
 const camera = { x: 0, y: 0, zoom: 1, dragging: false, dragStartX: 0, dragStartY: 0, startCamX: 0, startCamY: 0 };
 let mapAnimId = null;
-let confirmBuildBtn, cancelBuildBtn;
 
 const keys = {}; 
 
@@ -129,37 +128,6 @@ function drawEmbeddedLock(ctx, x, y) { ctx.save(); ctx.translate(x, y); const lo
 function getHoveredHex(mx, my) { const size = gameState.hexSize, cx = 1500, cy = 1500; let relX = mx - cx, relY = (my - cy) / PERSPECTIVE_Y; let q = (2/3 * relX) / size, r = (-1/3 * relX + Math.sqrt(3)/3 * relY) / size, s = -q - r; let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s); let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - s); if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs; else if (r_diff > s_diff) rr = -rq - rs; return { q: rq, r: rr }; }
 function hexDistance(a, b) { return (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - (b.q + b.r))) / 2; }
 
-function updatePlacingUI() {
-    if (!gameState.isPlacing || !gameState.placingSelectedHex) {
-        if (confirmBuildBtn) confirmBuildBtn.style.display = 'none';
-        if (cancelBuildBtn) cancelBuildBtn.style.display = 'none';
-        return;
-    }
-    const hex = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
-    if (hex) {
-        const container = document.getElementById('map-container');
-        const gameScreen = document.getElementById('game-screen');
-        const containerRect = container.getBoundingClientRect();
-        const gameScreenRect = gameScreen.getBoundingClientRect();
-        const offsetX = containerRect.left - gameScreenRect.left;
-        const offsetY = containerRect.top - gameScreenRect.top;
-        
-        const screenX = offsetX + (hex.x - camera.x) * camera.zoom;
-        const screenY = offsetY + (hex.y - camera.y) * camera.zoom;
-        
-        if (confirmBuildBtn) {
-            confirmBuildBtn.style.display = 'flex';
-            confirmBuildBtn.style.left = (screenX + 40) + 'px';
-            confirmBuildBtn.style.top = (screenY - 20) + 'px';
-        }
-        if (cancelBuildBtn) {
-            cancelBuildBtn.style.display = 'flex';
-            cancelBuildBtn.style.left = (screenX - 90) + 'px';
-            cancelBuildBtn.style.top = (screenY - 20) + 'px';
-        }
-    }
-}
-
 function drawMap() {
     if (gameState.gameOver) return;
     const canvas = document.getElementById('gameMap'); if (!canvas) return; const ctx = canvas.getContext('2d'); const container = document.getElementById('map-container'); if(!container) return; const rect = container.getBoundingClientRect(); if (rect.width === 0 || rect.height === 0) return; const dpr = window.devicePixelRatio || 1;
@@ -169,4 +137,4 @@ function drawMap() {
     let minZoom = Math.max(rect.width / mW, rect.height / mH); if (camera.zoom < minZoom) camera.zoom = minZoom; if (camera.zoom > 2) camera.zoom = 2; let viewW = rect.width / camera.zoom, viewH = rect.height / camera.zoom; camera.x = Math.max(0, Math.min(mW - viewW, camera.x)); camera.y = Math.max(0, Math.min(mH - viewH, camera.y));
     ctx.save(); ctx.translate(-camera.x * camera.zoom, -camera.y * camera.zoom); ctx.scale(camera.zoom, camera.zoom); ctx.fillStyle = '#dce8f0'; ctx.fillRect(0, 0, mW, mH); const hexW = gameState.hexSize * 2;
     gameState.constructionSites = gameState.constructionSites.filter(site => { let timeLeft = Math.ceil((site.endTime - Date.now()) / 1000); if (timeLeft <= 0) { if (!site.completed) { if (site.type === 'powerplant') { gameState.POWERPLANT_HEXES.push({ q: site.q, r: site.r }); showNotification("✅ نیروگاه جدید ساخته شد!", "success"); } else { gameState.HOUSE_HEXES.push({ q: site.q, r: site.r, pop: 0, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }); showNotification("✅ خونه جدید ساخته شد!", "success"); } site.completed = true; updateUI(); } return false; } return true; });
-    gameState.hexes.forEach(hex => { let houseData = gameState.HOUSE_HEXES.find(h => h.q === hex.q && h.r === hex.r); let ppData = gameState.POWERPLANT_HEXES.find(p => p.q === hex.q && p.r === hex.r); let isHouse = !!houseData, isPP = !!ppData; let dist = hexDistance(hex, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === hex.q && u.r === hex.r) || dist <= 1; if (i
+    gameState.hexes.forEach(hex => { let houseData = gameState.HOUSE_HEXES.find(h => h.q === hex.q && h.r === hex.r); let ppData = gameState.POWERPLANT_HEXES.find(p => p.q === hex.q && p.r === hex.r); let isHouse = !!houseData, isPP = !!ppData; let dist = hexDistance(hex, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === hex.q && u.r === hex.r) || dist <= 1; if (isLocked && !isUnlocked) { drawHex(ctx, hex.x, hex.y, gameState.hexSize, '#15181c', '#2a2e33', 1.5); drawEmbeddedLock(ctx, hex.x, hex.y); } else { drawHex(ctx, hex.x, hex.y, gameState.hexSize, '#ffffff', 'rgba(130, 160, 190, 0.4)', 1.5); } if (isHouse && houseImg.complete && houseImg.naturalHeight !== 0) { let imgW = hexW * HOUSE_SCALE, imgH = imgW * (houseImg.naturalHeight / houseImg.naturalWidth); let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + HOUSE_OFFSET_Y; ctx.drawImage(houseImg, drawX, drawY, imgW, imgH); const popText = `${houseData.pop}`; ctx.font = "bold 13px 'Vazirmatn', sans-serif"; const textWidth = ctx.measureText(popText).width; const pillW = textWidth + 30, pillH = 22, pillX = hex.x + 15, pillY = hex.y - 35; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.beginPath(); if (ctx.roundRect) { ctx.roundRect(pillX, pillY, pillW, pillH, 11); } else { ctx.rect(pillX, pillY, pillW, pillH); } ctx.fillStyle = 'rgba(20, 20, 30, 0.9)'; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.strokeStyle = 'rgba(244, 208, 63, 0.8)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.font = "12px Arial"; ctx.fillStyle = '#f4d03f'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('👤', pillX + 6, pillY + pillH/2 + 1); ctx.font = "bold 13px 'Vazirmatn', sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(popText, pill
