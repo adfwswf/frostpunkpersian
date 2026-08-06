@@ -173,7 +173,6 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
     .top-bar-logo { width: 26px; height: 26px; }
     
     .top-bar-center { 
-      
         width: 100% !important; 
         margin-top: 30px !important; 
         gap: 3px !important;
@@ -219,3 +218,4 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
     .build-buttons { justify-content: center; width: 100%; }
     .build-btn, .survey-btn { padding: 4px 8px; font-size: 0.7rem; }
     .build-image { width: 45px; height: 45px; }
+}
