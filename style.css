@@ -65,6 +65,7 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
   border-radius: 3px !important; cursor: pointer !important; 
   box-shadow: 0 0 25px rgba(232,69,26,0.3) !important; 
   min-width: 220px !important; text-align: center !important; margin-right: 0 !important; 
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
 }
 .btn-primary:hover { box-shadow: 0 0 40px rgba(232,69,26,0.5); transform: translateY(-2px); }
 
@@ -188,7 +189,6 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
     }
     .resource-divider { display: none; }
     
-    /* تنظیمات دکمه نصب در موبایل */
     .nav-cta {
         left: 10px !important;
         top: 10px !important;
