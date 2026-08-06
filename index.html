@@ -52,6 +52,9 @@
         min-width: 220px !important;
         text-align: center !important;
         margin-right: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     @media (max-width: 768px) {
         .nav-cta {
@@ -68,7 +71,6 @@
 </head>
 <body>
 
-<!-- === هدر === -->
 <header id="siteHeader">
   <nav>
     <a href="#" class="nav-cta">نصب بازی</a>
@@ -104,7 +106,6 @@
   </nav>
 </header>
 
-<!-- === هیرو (منوی اصلی سایت) === -->
 <section class="hero" id="hero">
   <div class="hero-bg"></div>
   <canvas id="heroCanvas"></canvas>
@@ -137,7 +138,6 @@
   </div>
 </section>
 
-<!-- === صفحه داستان === -->
 <div id="story-screen" style="display:none;">
   <div class="story-container">
     <h2>📖 پیشینه</h2>
@@ -146,7 +146,6 @@
   </div>
 </div>
 
-<!-- === صفحه اصلی بازی === -->
 <div id="game-screen" style="display:none;">
     <div id="top-bar">
         <div class="top-bar-left">
