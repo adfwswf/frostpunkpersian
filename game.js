@@ -160,19 +160,22 @@ function drawMap() {
                 ctx.globalAlpha = 0.6; ctx.drawImage(imgToDraw, drawX, drawY, imgW, imgH); ctx.globalAlpha = 1;
                 
                 if (isMobile && gameState.placingSelectedHex) {
+                    // اصلاح شعاع دایره‌ها برای هماهنگی کامل با محدوده لمس
+                    const btnRadius = 24; 
+                    
                     ctx.fillStyle = '#27ae60';
                     ctx.beginPath();
-                    ctx.arc(hex.x + 35, hex.y - 25, 18, 0, Math.PI * 2);
+                    ctx.arc(hex.x + 35, hex.y - 25, btnRadius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 20px Arial';
+                    ctx.font = 'bold 22px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText('✓', hex.x + 35, hex.y - 24);
 
                     ctx.fillStyle = '#e74c3c';
                     ctx.beginPath();
-                    ctx.arc(hex.x - 35, hex.y - 25, 18, 0, Math.PI * 2);
+                    ctx.arc(hex.x - 35, hex.y - 25, btnRadius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.fillStyle = '#fff';
                     ctx.fillText('✕', hex.x - 35, hex.y - 24);
@@ -228,11 +231,10 @@ function handleMapClick() {
     // 2. Moving Pop
     if (gameState.isMovingPop) { let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q && h.r === gameState.moveSource.r); if (destHouse && sourceHouse && destHouse !== sourceHouse) { if (destHouse.pop + gameState.moveAmount > 5) { showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); gameState.isMovingPop = false; return; } if (sourceHouse.pop < destHouse.pop) { showNotification("جابه‌جایی نامناسب! یک درصد رضایت کم شد.", "warning"); gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); updateUI(); } if (sourceHouse.receivedToday) { showAngryMoveModal(); sourceHouse.receivedToday = false; gameState.isMovingPop = false; return; } sourceHouse.pop -= gameState.moveAmount; destHouse.pop += gameState.moveAmount; destHouse.receivedToday = true; updateUI(); gameState.isMovingPop = false; if (gameState.tutorialStep === 16) { gameState.tutorialStep = 17; updateTutorialBox(); } } else { showNotification(LANG[gameState.currentLang].selectOther, "warning"); } return; }
     
-    // 3. Placing Building (MUST BE BEFORE UNLOCK AND HOUSE CLICKS)
+    // 3. Placing Building
     if (gameState.isPlacing) {
         const isMobile = window.innerWidth <= 768;
 
-        // If mobile and ghost is already placed, ONLY check for tick or cross
         if (isMobile && gameState.placingSelectedHex) {
             let selectedHex = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
             if (selectedHex) {
@@ -240,8 +242,10 @@ function handleMapClick() {
                 let distConfirm = Math.sqrt((clickX - (selectedHex.x + 35))**2 + (clickY - (selectedHex.y - 25))**2);
                 let distCancel = Math.sqrt((clickX - (selectedHex.x - 35))**2 + (clickY - (selectedHex.y - 25))**2);
 
-                if (distConfirm < 30) { // Increased radius for easier tapping
-                    // TICK PRESSED - Validate and build
+                // تنظیم دقیق محدوده لمس بر روی کل دایره
+                const touchRadius = 28; 
+                
+                if (distConfirm <= touchRadius) {
                     let targetHexObj = gameState.placingSelectedHex;
                     let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHexObj.q && h.r === targetHexObj.r);
                     let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === targetHexObj.q && p.r === targetHexObj.r);
@@ -256,32 +260,26 @@ function handleMapClick() {
                     if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(targetHexObj, p) <= 1) { tooClose = true; break; } } }
                     if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
 
-                    // If valid, build!
                     if (executeBuild(targetHexObj)) {
                         gameState.isPlacing = false;
                         gameState.placingSelectedHex = null;
                     }
                     return;
-                } else if (distCancel < 30) { // Increased radius for easier tapping
-                    // CROSS PRESSED
+                } else if (distCancel <= touchRadius) {
                     gameState.isPlacing = false;
                     gameState.placingSelectedHex = null;
                     showNotification(LANG[gameState.currentLang].buildCancel, "info");
                     return;
                 } else {
-                    // TAPPED SOMEWHERE ELSE (IGNORE)
                     return; 
                 }
             }
         }
 
-        // If mobile without a selected hex yet, or Desktop:
         if (isMobile) {
-            // Just place the ghost here, no validation yet!
             gameState.placingSelectedHex = target;
             return;
         } else {
-            // Desktop validation and immediate build
             if (isHouse || isPP || isOccupied) { showNotification(LANG[gameState.currentLang].occupied, "warning"); return; }
             if (!isUnlocked) { showNotification(LANG[gameState.currentLang].lockedArea, "warning"); return; }
             let tooClose = false;
@@ -296,10 +294,10 @@ function handleMapClick() {
         }
     }
 
-    // 4. Clicking existing house (Move Pop)
+    // 4. Clicking existing house
     if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
     
-    // 5. Clicking locked hex (Unlock)
+    // 5. Clicking locked hex
     if (isLocked && !isUnlocked && !isHouse && !isPP && !isOccupied) { const neighbors = [ { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r }, { q: target.q, r: target.r + 1 }, { q: target.q, r: target.r - 1 }, { q: target.q + 1, r: target.r - 1 }, { q: target.q - 1, r: target.r + 1 } ]; let isAdjacent = false; for (let n of neighbors) { let nDist = hexDistance(n, { q: 0, r: 0 }); let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q && h.r === n.r); let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q && u.r === n.r) || nDist <= 1; if (nIsHouse || nIsUnlocked) { isAdjacent = true; break; } } if (!isAdjacent) { showNotification(LANG[gameState.currentLang].noAdjacent, "warning"); return; } if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 1 && gameState.tutorialStep !== 9) { showNotification("فعلاً طبق آموزش پیش برو!", "info"); return; } if (gameState.tutorialStep === 9) { let isAdjacentToHouse = false; for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) === 1) { isAdjacentToHouse = true; break; } } if (isAdjacentToHouse) { showNotification("برای نیروگاه، جایی رو انتخاب کن که کنارش خونه نباشه!", "warning"); return; } } gameState.pendingUnlockTarget = target; const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; }
     
     // 6. Tutorial step validation
