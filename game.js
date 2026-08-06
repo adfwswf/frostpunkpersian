@@ -232,6 +232,7 @@ function handleMapClick() {
     if (gameState.isPlacing) {
         const isMobile = window.innerWidth <= 768;
 
+        // If mobile and ghost is already placed, ONLY check for tick or cross
         if (isMobile && gameState.placingSelectedHex) {
             let selectedHex = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
             if (selectedHex) {
@@ -239,50 +240,60 @@ function handleMapClick() {
                 let distConfirm = Math.sqrt((clickX - (selectedHex.x + 35))**2 + (clickY - (selectedHex.y - 25))**2);
                 let distCancel = Math.sqrt((clickX - (selectedHex.x - 35))**2 + (clickY - (selectedHex.y - 25))**2);
 
-                if (distConfirm < 20) {
-                    if (executeBuild(gameState.placingSelectedHex)) {
+                if (distConfirm < 22) {
+                    // TICK PRESSED - Validate and build
+                    let targetHexObj = gameState.placingSelectedHex;
+                    let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHexObj.q && h.r === targetHexObj.r);
+                    let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === targetHexObj.q && p.r === targetHexObj.r);
+                    let tIsOccupied = gameState.constructionSites.some(c => c.q === targetHexObj.q && c.r === targetHexObj.r);
+                    let tIsLocked = !gameState.unlockedHexes.some(u => u.q === targetHexObj.q && u.r === targetHexObj.r) && hexDistance(targetHexObj, { q: 0, r: 0 }) > 1;
+
+                    if (tIsHouse || tIsPP || tIsOccupied) { showNotification(LANG[gameState.currentLang].occupied, "warning"); return; }
+                    if (tIsLocked) { showNotification(LANG[gameState.currentLang].lockedArea, "warning"); return; }
+
+                    let tooClose = false;
+                    for (let h of gameState.HOUSE_HEXES) { if (hexDistance(targetHexObj, h) <= 1) { tooClose = true; break; } }
+                    if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(targetHexObj, p) <= 1) { tooClose = true; break; } } }
+                    if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
+
+                    // If valid, build!
+                    if (executeBuild(targetHexObj)) {
                         gameState.isPlacing = false;
                         gameState.placingSelectedHex = null;
                     }
                     return;
-                } else if (distCancel < 20) {
+                } else if (distCancel < 22) {
+                    // CROSS PRESSED
                     gameState.isPlacing = false;
                     gameState.placingSelectedHex = null;
                     showNotification(LANG[gameState.currentLang].buildCancel, "info");
                     return;
+                } else {
+                    // TAPPED SOMEWHERE ELSE (IGNORE)
+                    return; 
                 }
             }
         }
 
-        // Clicking on the map while placing
-        if (isHouse || isPP || isOccupied) {
-            if (!isMobile || !gameState.placingSelectedHex) showNotification(LANG[gameState.currentLang].occupied, "warning");
-            return;
-        }
-        if (!isUnlocked) {
-            if (!isMobile || !gameState.placingSelectedHex) showNotification(LANG[gameState.currentLang].lockedArea, "warning");
-            return;
-        }
-
-        // Universal distance check: no building next to ANY other building
-        let tooClose = false;
-        for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) <= 1) { tooClose = true; break; } }
-        if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(target, p) <= 1) { tooClose = true; break; } } }
-        
-        if (tooClose) {
-            if (!isMobile || !gameState.placingSelectedHex) showNotification(LANG[gameState.currentLang].tooClose, "warning");
-            return;
-        }
-
-        // If valid spot:
+        // If mobile without a selected hex yet, or Desktop:
         if (isMobile) {
+            // Just place the ghost here, no validation yet!
             gameState.placingSelectedHex = target;
+            return;
         } else {
+            // Desktop validation and immediate build
+            if (isHouse || isPP || isOccupied) { showNotification(LANG[gameState.currentLang].occupied, "warning"); return; }
+            if (!isUnlocked) { showNotification(LANG[gameState.currentLang].lockedArea, "warning"); return; }
+            let tooClose = false;
+            for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) <= 1) { tooClose = true; break; } }
+            if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(target, p) <= 1) { tooClose = true; break; } } }
+            if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
+
             if (executeBuild(target)) {
                 gameState.isPlacing = false;
             }
+            return;
         }
-        return;
     }
 
     // 4. Clicking existing house (Move Pop)
