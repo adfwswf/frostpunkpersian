@@ -7,13 +7,12 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Vazirmatn', sans-serif; background: var(--bg); color: var(--fg); overflow: hidden; height: 100vh; width: 100vw; user-select: none; }
 
-/* مخفی کردن دکمه منوی همبرگری در حالت دسکتاپ */
-.mobile-toggle { display: none; }
+/* مخفی کردن کامل دکمه منوی همبرگری چون اسکریپتی ندارد */
+.mobile-toggle { display: none !important; }
 
 #siteHeader { position: fixed; top: 0; left: 0; width: 100%; z-index: 2000; background: #111111; border-bottom: 1px solid var(--border); height: 65px; display: flex; }
 nav { width: 100%; display: flex; justify-content: center; align-items: center; padding: 0 20px; position: relative; }
 
-/* استایل نهایی و ثابت دکمه نصب بازی (بنفش) */
 .nav-cta {
   background: linear-gradient(135deg, #8e44ad, #9b59b6) !important;
   border: 1px solid #9b59b6 !important;
@@ -58,7 +57,6 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
 .hero-subtitle { font-size: 13px; letter-spacing: 8px; color: var(--steel-light); direction: ltr; margin-top: 4px; }
 .hero-tagline { font-size: 20px; color: var(--muted); margin-top: 24px; line-height: 1.8; }
 
-/* استایل نهایی و ثابت دکمه شروع بازی (دراز و نارنجی) */
 .hero-actions { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 15px !important; margin-top: 40px !important; }
 .btn-primary { 
   background: linear-gradient(135deg, var(--accent), var(--accent2)) !important; 
@@ -130,8 +128,9 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
 
 @media (max-width: 768px) {
     .nav-links { display: none; }
-    #siteHeader { height: 55px; }
+    #siteHeader { height: 50px; }
     .logo-text { display: none; }
+    .logo-icon { width: 32px; height: 32px; }
     
     #top-bar { 
         height: auto !important; 
@@ -147,47 +146,48 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
     #top-bar::before {
         content: "آخرین گرما";
         position: absolute;
-        top: 12px;
+        top: 10px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 700;
         color: var(--fg);
     }
     #btnPause { 
         position: absolute !important; 
         left: 10px !important; 
-        top: 12px !important; 
+        top: 8px !important; 
         transform: none !important;
         background: none !important;
         border: none !important;
     }
-    #btnPause img { width: 24px; height: 24px; }
+    #btnPause img { width: 22px; height: 22px; }
     .top-bar-left { 
         position: absolute !important; 
         right: 10px !important; 
-        top: 12px !important;
+        top: 8px !important;
         gap: 0 !important;
         display: flex !important;
     }
     .top-bar-text { display: none !important; }
-    .top-bar-logo { width: 28px; height: 28px; }
+    .top-bar-logo { width: 26px; height: 26px; }
     
     .top-bar-center { 
+      
         width: 100% !important; 
-        margin-top: 35px !important; 
-        gap: 4px !important;
+        margin-top: 30px !important; 
+        gap: 3px !important;
         justify-content: center !important;
         flex-wrap: wrap !important;
     }
-    .resource-item { padding: 2px 6px; height: auto; gap: 2px; margin-bottom: 4px; }
-    .resource-icon { font-size: 0.8rem; }
+    .resource-item { padding: 2px 5px; height: auto; gap: 2px; margin-bottom: 3px; }
+    .resource-icon { font-size: 0.75rem; }
     .resource-label { display: none; }
-    .resource-value { font-size: 0.75rem; min-width: 10px; }
+    .resource-value { font-size: 0.7rem; min-width: 10px; }
     
     .resource-bar-container { 
         display: block !important;
-        width: 25px !important;
+        width: 22px !important;
         height: 3px !important;
     }
     .resource-divider { display: none; }
@@ -196,33 +196,26 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
         left: 10px !important;
         top: 10px !important;
         transform: none !important;
-        height: 35px !important;
-        padding: 0 12px !important;
-        font-size: 12px !important;
-        background: rgba(142, 68, 173, 0.6) !important;
+        height: 30px !important;
+        padding: 0 10px !important;
+        font-size: 11px !important;
+        background: rgba(142, 68, 173, 0.7) !important;
     }
     
-    #map-container { top: 135px; bottom: 60px; }
+    #map-container { top: 125px; bottom: 45px; }
     
-    #bottom-bar { height: 60px; padding: 5px; }
-    .bottom-btn .btn-icon-large { font-size: 1.4rem; }
-    .bottom-btn .btn-label { font-size: 0.6rem; }
+    #bottom-bar { height: 45px; padding: 5px; }
+    .bottom-btn .btn-icon-large { font-size: 1.2rem; }
+    .bottom-btn .btn-label { font-size: 0.55rem; }
     
-    .floating-panel { width: 95%; }
-    .build-item-new { flex-direction: column; gap: 15px; text-align: center; }
+    .floating-panel { width: 92%; border-radius: 12px; }
+    .panel-header { padding: 8px 12px; }
+    .panel-header h3 { font-size: 0.85rem; }
+    .panel-body { padding: 8px; }
+    .build-item-new { flex-direction: column; gap: 8px; text-align: center; padding: 8px; margin-bottom: 8px; }
+    .build-info-text { gap: 2px; }
+    .build-name { font-size: 0.85rem; }
+    .build-info-text > div { font-size: 0.65rem; }
     .build-buttons { justify-content: center; width: 100%; }
-    
-    /* نمایش دکمه منو فقط در موبایل */
-    .mobile-toggle {
-        display: block;
-        position: absolute;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: none;
-        border: none;
-        color: #fff;
-        font-size: 1.5rem;
-        cursor: pointer;
-    }
-}
+    .build-btn, .survey-btn { padding: 4px 8px; font-size: 0.7rem; }
+    .build-image { width: 45px; height: 45px; }
