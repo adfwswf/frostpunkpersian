@@ -209,3 +209,23 @@ nav { width: 100%; display: flex; justify-content: center; align-items: center; 
     .build-item-new { flex-direction: column; gap: 15px; text-align: center; }
     .build-buttons { justify-content: center; width: 100%; }
 }
+/* مخفی کردن دکمه منوی همبرگری در حالت دسکتاپ */
+.mobile-toggle {
+    display: none;
+}
+
+/* نمایش دکمه منو فقط در موبایل */
+@media (max-width: 768px) {
+    .mobile-toggle {
+        display: block;
+        position: absolute;
+        right: 20px; /* یا هر جای دیگری که دوست دارید */
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+                    }
