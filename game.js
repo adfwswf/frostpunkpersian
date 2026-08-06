@@ -240,7 +240,7 @@ function handleMapClick() {
                 let distConfirm = Math.sqrt((clickX - (selectedHex.x + 35))**2 + (clickY - (selectedHex.y - 25))**2);
                 let distCancel = Math.sqrt((clickX - (selectedHex.x - 35))**2 + (clickY - (selectedHex.y - 25))**2);
 
-                if (distConfirm < 22) {
+                if (distConfirm < 30) { // Increased radius for easier tapping
                     // TICK PRESSED - Validate and build
                     let targetHexObj = gameState.placingSelectedHex;
                     let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHexObj.q && h.r === targetHexObj.r);
@@ -262,7 +262,7 @@ function handleMapClick() {
                         gameState.placingSelectedHex = null;
                     }
                     return;
-                } else if (distCancel < 22) {
+                } else if (distCancel < 30) { // Increased radius for easier tapping
                     // CROSS PRESSED
                     gameState.isPlacing = false;
                     gameState.placingSelectedHex = null;
