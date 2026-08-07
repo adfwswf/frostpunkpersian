@@ -142,12 +142,26 @@ function updateActionTracker() {
     if (gameState.isMovingPop) currentState = 'move';
     else if (gameState.isPlacing) currentState = 'build_' + gameState.placingType;
 
+    // اگر هیچ پیامی وجود نداشت و قبلا هم نبود، کاری نکن
     if (currentState === lastTrackerState) return;
+    
+    // اگر حالت به none تغییر کرد (یعنی انصراف زده شد یا عملیات تمام شد)
+    if (currentState === 'none') {
+        const tracker = document.getElementById('actionTracker');
+        if (tracker) {
+            tracker.style.display = 'none';
+            tracker.innerHTML = '';
+        }
+        lastTrackerState = 'none';
+        return;
+    }
+
     lastTrackerState = currentState;
 
     const tracker = document.getElementById('actionTracker');
     if (!tracker) return;
     let html = '';
+    
     if (currentState === 'move') {
         html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;">
             <div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div>
@@ -161,20 +175,15 @@ function updateActionTracker() {
         </div>`;
     }
 
-    if (html === '') {
-        tracker.style.display = 'none';
-        tracker.innerHTML = '';
-    } else {
-        tracker.style.display = 'flex';
-        tracker.innerHTML = html;
-    }
+    tracker.style.display = 'flex';
+    tracker.innerHTML = html;
 
     const cancelMoveBtn = document.getElementById('cancelMoveTrackBtn');
     if (cancelMoveBtn) {
         cancelMoveBtn.addEventListener('click', () => {
             gameState.isMovingPop = false;
             showNotification("انتقال لغو شد", "info");
-            lastTrackerState = 'none'; // ریست استیت
+            lastTrackerState = 'none'; // ریست استیت برای مخفی شدن پیام
             updateActionTracker();
         });
     }
@@ -184,7 +193,7 @@ function updateActionTracker() {
             gameState.isPlacing = false;
             gameState.placingSelectedHex = null;
             showNotification("ساخت لغو شد", "info");
-            lastTrackerState = 'none'; // ریست استیت
+            lastTrackerState = 'none'; // ریست استیت برای مخفی شدن پیام
             updateActionTracker();
         });
     }
@@ -277,7 +286,7 @@ function setupControls() {
     });
     canvas.addEventListener('wheel', e => { if(gameState.isPaused) return; e.preventDefault(); let newZoom = camera.zoom + (e.deltaY > 0 ? -0.1 : 0.1); const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect(); let minZoom = Math.max(rect.width / mW, rect.height / mH); camera.zoom = Math.max(minZoom, Math.min(2, newZoom)); }, { passive: false });
     canvas.addEventListener('click', (e) => { 
-        if (Date.now() - lastTouchTime < 500) return; // نادیده گرفتن کلیک تقلبی موبایل
+        if (Date.now() - lastTouchTime < 500) return; 
         e.preventDefault(); 
         if(!gameState.isPaused && !mouseDragged) handleMapClick(); 
         mouseDragged = false; 
@@ -386,7 +395,6 @@ function handleMapClick() {
                 return; 
             } 
             
-            // بررسی نارضایتی از جابجایی زیاد (در یک روز)
             if (sourceHouse.receivedToday) { 
                 showAngryMoveModal(); 
                 sourceHouse.receivedToday = false; 
@@ -395,7 +403,6 @@ function handleMapClick() {
                 return; 
             } 
             
-            // سیستم هوشمند رضایت
             const sourceWasCrowded = sourceHouse.pop >= 4;
             const destWillBeCrowded = destHouse.pop + gameState.moveAmount >= 4;
 
@@ -489,7 +496,7 @@ function handleMapClick() {
         for (let n of neighbors) { 
             let nDist = hexDistance(n, { q: 0, r: 0 }); 
             let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q && h.r === n.r); 
-            let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q && u.r === n.r) || nDist <= 1; 
+            let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q and u.r === n.r) || nDist <= 1; 
             if (nIsHouse || nIsUnlocked) { isAdjacent = true; break; } 
         } 
         if (!isAdjacent) { showNotification(LANG[gameState.currentLang].noAdjacent, "warning"); return; } 
@@ -631,7 +638,6 @@ function initGame() {
     const exploreBtn = document.createElement('button'); exploreBtn.className = 'bottom-btn'; exploreBtn.id = 'btnExplore'; exploreBtn.innerHTML = '<span class="btn-icon-large">🧭</span><span class="btn-label">اکتشاف</span>'; if (bottomBar) bottomBar.appendChild(exploreBtn);
     const requestsBtn = document.createElement('button'); requestsBtn.className = 'bottom-btn'; requestsBtn.id = 'btnRequests'; requestsBtn.innerHTML = '<span class="btn-icon-large">📜</span><span class="btn-label">درخواست‌ها</span>'; if (bottomBar) bottomBar.appendChild(requestsBtn);
     
-    // ایجاد کادر اصلی برای استک شدن پیام‌ها
     const rightPanelContainer = document.createElement('div'); rightPanelContainer.id = 'rightPanelContainer'; rightPanelContainer.style.cssText = "position: fixed; right: 20px; top: 70px; width: 220px; z-index: 200; display: flex; flex-direction: column; gap: 10px;"; if (gameScreen) gameScreen.appendChild(rightPanelContainer);
     
     const actionTracker = document.createElement('div'); actionTracker.id = 'actionTracker'; actionTracker.style.cssText = "display: none; flex-direction: column; gap: 5px;"; rightPanelContainer.appendChild(actionTracker);
