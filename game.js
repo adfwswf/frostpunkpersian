@@ -181,7 +181,6 @@ function updateActionTracker() {
         cancelMoveBtn.addEventListener('click', () => {
             gameState.isMovingPop = false;
             showNotification("انتقال لغو شد", "info");
-            lastTrackerState = 'none';
             updateActionTracker();
         });
     }
@@ -191,7 +190,6 @@ function updateActionTracker() {
             gameState.isPlacing = false;
             gameState.placingSelectedHex = null;
             showNotification("ساخت لغو شد", "info");
-            lastTrackerState = 'none';
             updateActionTracker();
         });
     }
@@ -279,8 +277,8 @@ function setupControls() {
     window.addEventListener('mouseup', () => { camera.dragging = false; canvas.style.cursor = 'grab'; });
     canvas.addEventListener('contextmenu', e => {
         e.preventDefault();
-        if (gameState.isPlacing) { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification(LANG[gameState.currentLang].buildCancel, "info"); lastTrackerState = 'none'; updateActionTracker(); }
-        if (gameState.isMovingPop) { gameState.isMovingPop = false; showNotification(LANG[gameState.currentLang].moveCancel, "info"); lastTrackerState = 'none'; updateActionTracker(); }
+        if (gameState.isPlacing) { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification(LANG[gameState.currentLang].buildCancel, "info"); updateActionTracker(); }
+        if (gameState.isMovingPop) { gameState.isMovingPop = false; showNotification(LANG[gameState.currentLang].moveCancel, "info"); updateActionTracker(); }
     });
     canvas.addEventListener('wheel', e => { if(gameState.isPaused) return; e.preventDefault(); let newZoom = camera.zoom + (e.deltaY > 0 ? -0.1 : 0.1); const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect(); let minZoom = Math.max(rect.width / mW, rect.height / mH); camera.zoom = Math.max(minZoom, Math.min(2, newZoom)); }, { passive: false });
     canvas.addEventListener('click', (e) => { 
@@ -389,7 +387,7 @@ function handleMapClick() {
             if (destHouse.pop + gameState.moveAmount > 5) { 
                 showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); 
                 gameState.isMovingPop = false; 
-                lastTrackerState = 'none'; updateActionTracker(); 
+                updateActionTracker(); 
                 return; 
             } 
             
@@ -397,7 +395,7 @@ function handleMapClick() {
                 showAngryMoveModal(); 
                 sourceHouse.receivedToday = false; 
                 gameState.isMovingPop = false; 
-                lastTrackerState = 'none'; updateActionTracker(); 
+                updateActionTracker(); 
                 return; 
             } 
             
@@ -430,7 +428,7 @@ function handleMapClick() {
             destHouse.receivedToday = true; 
             updateUI(); 
             gameState.isMovingPop = false; 
-            lastTrackerState = 'none'; updateActionTracker();
+            updateActionTracker();
             
             if (gameState.tutorialStep === 16) { 
                 gameState.tutorialStep = 17; 
@@ -456,14 +454,14 @@ function handleMapClick() {
                     if (executeBuild(gameState.placingSelectedHex)) {
                         gameState.isPlacing = false;
                         gameState.placingSelectedHex = null;
-                        lastTrackerState = 'none'; updateActionTracker();
+                        updateActionTracker();
                     }
                     return;
                 } else if (distCancel <= touchRadius) {
                     gameState.isPlacing = false;
                     gameState.placingSelectedHex = null;
                     showNotification(LANG[gameState.currentLang].buildCancel, "info");
-                    lastTrackerState = 'none'; updateActionTracker();
+                    updateActionTracker();
                     return;
                 }
             }
@@ -508,7 +506,17 @@ function handleMapClick() {
         const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; 
     }
     
-    if (gameState.tutorialStep > 0) { if (gameState.tutorialStep === 1 || gameState.tutorialStep === 9) showNotification("روی یکی از خانه‌های قفل‌شده کلیک کن!", "warning"); else if (gameState.tutorialStep === 2 || gameState.tutorialStep === 10) showNotification("حالا روی دکمه «ساخت و ساز» کلیک کن!", "warning"); else if (gameState.tutorialStep === 3 || gameState.tutorialStep === 11) showNotification("روی دکمه «ساخت» کلیک کن!", "warning"); else if (gameState.tutorialStep === 4 || gameState.tutorialStep === 12) showNotification("روی زمینی که قفلش رو باز کردی کلیک کن و تیک سبز رو بزن!", "warning"); else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning"); else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning"); else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning"); else showNotification("فعلاً طبق آموزش پیش برو!", "warning"); return; }
+    if (gameState.tutorialStep > 0) { 
+        if (gameState.tutorialStep === 1 || gameState.tutorialStep === 9) showNotification("روی یکی از خانه‌های قفل‌شده کلیک کن!", "warning"); 
+        else if (gameState.tutorialStep === 2 || gameState.tutorialStep === 10) showNotification("حالا روی دکمه «ساخت و ساز» کلیک کن!", "warning"); 
+        else if (gameState.tutorialStep === 3 || gameState.tutorialStep === 11) showNotification("روی دکمه «ساخت» کلیک کن!", "warning"); 
+        else if (gameState.tutorialStep === 4 || gameState.tutorialStep === 12) showNotification("روی زمینی که قفلش رو باز کردی کلیک کن و تیک سبز رو بزن!", "warning"); 
+        else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning"); 
+        else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning"); 
+        else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning"); 
+        else showNotification("فعلاً طبق آموزش پیش برو!", "warning"); 
+        return; 
+    }
 }
 
 const LANG = { fa: { resume: "ادامه بازی", settings: "تنظیمات", exit: "خروج", pauseTitle: "منوی توقف", settingsTitle: "تنظیمات", video: "ویدیو", audio: "صدا", controls: "کنترل ها", selectLang: "انتخاب زبان:", musicVol: "صدای موسیقی:", mute: "قطع صدا", unmute: "پخش صدا", rebindTxt: "برای تغییر دکمه، روی آن کلیک کنید و دکمه جدید را فشار دهید.", up: "حرکت به بالا", down: "حرکت به پایین", left: "حرکت به چپ", right: "حرکت به راست", back: "بازگشت", explore: "اکتشاف", build: "ساخت و ساز", movePop: "انتقال جمعیت", buildHouse: "ساخت خانه جدید", buildBtn: "ساخت", close: "✕", cancel: "انصراف", moveBtn: "انتقال", movePrompt: "چند نفر منتقل شوند؟", dispatchTroops: "اعزام نیرو", unlockTitle: "باز کردن قفل", unlockQ: "آیا می‌خواهید این قفل را باز کنید؟", unlockCost: "این کار ۱۰ سنگ هزینه دارد.", unlockYes: "بله، باز کن", resultTitle: "گزارش اکتشاف", resultRegion: "منطقه:", resultCasualties: "تلفات:", resultRes: "گزارش منابع:", resultNone: "منابع دریافت نکردید", collect: "دریافت", houseBuilt: "✅ خونه جدید ساخته شد!", buildCancel: "ساخت لغو شد", moveCancel: "انتقال لغو شد", moveSuccess: "جابه‌جایی موفق بود!", moveFail: "جابه‌جایی نامناسب!", moved: "نفر منتقل شدند.", emptyHouse: "آدمی برای انتقال نیست!", noAdjacent: "برای باز کردن این قفل، باید یک منطقه باز در کنارش داشته باشید!", followTut: "فعلاً طبق آموزش پیش برو!", buildStart: "خونه در حال ساخت است و ۱۰ چوب کم شد!", noWood: "چوب کافی نداری!", clickUnlocked: "روی خونه‌ای که قفلش رو باز کردی کلیک کن!", lockedArea: "یک مکان باز رو انتخاب کن!", tooClose: "نمیتوانید به ساختمان‌های دیگر بچسبانید!", occupied: "در این مکان از قبل ساخته شده است!", keyBindSuccess: "کلید با موفقیت تنظیم شد!", langChanged: "زبان به فارسی تغییر یافت", risk: "مقدار تلفات", reward: "پاداش هر بازگشته", dispatchBtn: "اعزام نیرو", wood: "چوب", stone: "سنگ", food: "غذا", fuel: "سوخت", dispatchNotif: "نفر به", temp: "دما" }, en: { resume: "Resume", settings: "Settings", exit: "Exit", pauseTitle: "Pause Menu", settingsTitle: "Settings", video: "Video", audio: "Audio", controls: "Controls", selectLang: "Select Language:", musicVol: "Music Volume:", mute: "Mute", unmute: "Unmute", rebindTxt: "To change a key, click on it and press a new key.", up: "Move Up", down: "Move Down", left: "Move Left", right: "Move Right", back: "Back", explore: "Explore", build: "Build", movePop: "Move Population", buildHouse: "Build New House", buildBtn: "Build", close: "✕", cancel: "Cancel", moveBtn: "Move", movePrompt: "How many to move?", dispatchTroops: "Dispatch Troops", unlockTitle: "Unlock", unlockQ: "Do you want to unlock this?", unlockCost: "This costs 10 stones.", unlockYes: "Yes, Unlock", resultTitle: "Expedition Report", resultRegion: "Region:", resultCasualties: "Casualties:", resultRes: "Resources Report:", resultNone: "No resources found.", collect: "Collect", houseBuilt: "✅ New house built!", buildCancel: "Build canceled", moveCancel: "Move canceled", moveSuccess: "Move successful!", moveFail: "Bad move!", moved: "troops moved.", emptyHouse: "No one to move!", noAdjacent: "You need an adjacent unlocked area to unlock this!", followTut: "Follow the tutorial for now!", buildStart: "House is building, 10 wood deducted!", noWood: "Not enough wood!", clickUnlocked: "Click on the house you just unlocked!", lockedArea: "Select an unlocked area!", tooClose: "Cannot build adjacent to other buildings!", occupied: "This area is already occupied!", keyBindSuccess: "Key binded successfully!", langChanged: "Language changed to English", risk: "Casualties", reward: "Reward per survivor", dispatchBtn: "Dispatch", wood: "Wood", stone: "Stone", food: "Food", fuel: "Fuel", dispatchNotif: "troops to", temp: "Temp" } };
@@ -671,9 +679,9 @@ function initGame() {
     if (btnBuild) btnBuild.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 2 && gameState.tutorialStep !== 10) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelBuild'); if (panelBuild) panelBuild.classList.add('panel-open'); if (gameState.tutorialStep === 2) { gameState.tutorialStep = 3; updateTutorialBox(); } else if (gameState.tutorialStep === 10) { gameState.tutorialStep = 11; updateTutorialBox(); } };
     const closeBuildPanel = document.getElementById('closeBuildPanel'); if (closeBuildPanel) closeBuildPanel.onclick = () => { if (panelBuild) panelBuild.classList.remove('panel-open'); };
     const txtBuildBtn = document.getElementById('txtBuildBtn');
-    if (txtBuildBtn) txtBuildBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 3) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'house'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); lastTrackerState = 'none'; updateActionTracker(); if (gameState.tutorialStep === 3) { gameState.tutorialStep = 4; updateTutorialBox(); } };
+    if (txtBuildBtn) txtBuildBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 3) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'house'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); if (gameState.tutorialStep === 3) { gameState.tutorialStep = 4; updateTutorialBox(); } };
     const selectPowerPlant = document.getElementById('selectPowerPlant');
-    if (selectPowerPlant) selectPowerPlant.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 11) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'powerplant'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); lastTrackerState = 'none'; updateActionTracker(); if (gameState.tutorialStep === 11) { gameState.tutorialStep = 12; updateTutorialBox(); } };
+    if (selectPowerPlant) selectPowerPlant.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 11) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'powerplant'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); if (gameState.tutorialStep === 11) { gameState.tutorialStep = 12; updateTutorialBox(); } };
     if (exploreBtn) exploreBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelExplore'); if (panelExplore) panelExplore.classList.add('panel-open'); if (gameState.tutorialStep === 5) { gameState.tutorialStep = 6; updateTutorialBox(); } };
     const closeExplorePanel = document.getElementById('closeExplorePanel'); if (closeExplorePanel) closeExplorePanel.onclick = () => { if (panelExplore) panelExplore.classList.remove('panel-open'); };
     if (requestsBtn) requestsBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelRequests'); if (panelRequests) panelRequests.classList.add('panel-open'); };
@@ -682,7 +690,7 @@ function initGame() {
     const dispatchLaton = document.getElementById('dispatchLaton'); if (dispatchLaton) dispatchLaton.onclick = () => openDispatchModal('آبشار لاتون');
     const dispatchPersepolis = document.getElementById('dispatchPersepolis'); if (dispatchPersepolis) dispatchPersepolis.onclick = () => openDispatchModal('تخت جمشید');
     const closeMovePopPanel = document.getElementById('closeMovePopPanel'); if (closeMovePopPanel) closeMovePopPanel.onclick = () => { if (panelMovePop) panelMovePop.classList.remove('panel-open'); if (gameState.tutorialStep === 15) { gameState.tutorialStep = 14; updateTutorialBox(); } };
-    const txtMovePopBtn = document.getElementById('txtMovePopBtn'); if (txtMovePopBtn) txtMovePopBtn.onclick = () => { if (gameState.moveAmount > 0) { gameState.isMovingPop = true; if (panelMovePop) panelMovePop.classList.remove('panel-open'); lastTrackerState = 'none'; updateActionTracker(); showNotification("حالا روی خونه مقصد کلیک کن", "info"); if (gameState.tutorialStep === 15) { gameState.tutorialStep = 16; updateTutorialBox(); } } };
+    const txtMovePopBtn = document.getElementById('txtMovePopBtn'); if (txtMovePopBtn) txtMovePopBtn.onclick = () => { if (gameState.moveAmount > 0) { gameState.isMovingPop = true; if (panelMovePop) panelMovePop.classList.remove('panel-open'); updateActionTracker(); showNotification("حالا روی خونه مقصد کلیک کن", "info"); if (gameState.tutorialStep === 15) { gameState.tutorialStep = 16; updateTutorialBox(); } } };
     const tutorialHTML = `<div id="tutorialBox" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(201, 168, 76, 0.2); border-radius: 16px; z-index: 400; display: none; flex-direction: row; gap: 15px; padding: 15px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);"><div style="flex: 1; text-align: right;"><h3 style="color: #f4d03f; margin-bottom: 10px; font-size: 0.9rem;">آموزش بازی</h3><p id="tutorialText" style="color: #e8dcc8; font-size: 0.8rem; line-height: 1.6;"></p><button id="tutorialBtn" style="margin-top: 10px; padding: 6px 15px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 6px; color: #1a1a2e; font-weight: 700; cursor: pointer; display: none; font-size: 0.8rem;">متوجه شدم</button></div><img src="guide.png" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;"></div>`;
     if (gameScreen) gameScreen.insertAdjacentHTML('beforeend', tutorialHTML);
 }
