@@ -232,4 +232,20 @@
 <!-- اضافه شدن ?v=2 برای جلوگیری از کش شدن در مرورگر موبایل -->
 <script src="game.js?v=2"></script>
 </body>
+    <script>
+  // پاک کردن سرویس‌ورکرهای قدیمی برای حل مشکل کش
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for(let registration of registrations) {
+        registration.unregister();
+      }
+    });
+    // پاک کردن کش‌های مرورگر
+    if (window.caches) {
+      caches.keys().then(function(names) {
+        for (let name of names) caches.delete(name);
+      });
+    }
+  }
+    </script>
 </html>
