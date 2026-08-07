@@ -426,7 +426,27 @@ function handleMapClick() {
     }
     
     if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
-    if (isLocked && !isUnlocked && !isHouse && !isPP && !isOccupied) { const neighbors = [ { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r }, { q: target.q, r: target.r + 1 }, { q: target.q, r: target.r - 1 }, { q: target.q + 1, r: target.r - 1 }, { q: target.q - 1, r: target.r + 1 } ]; let isAdjacent = false; for (let n of neighbors) { let nDist = hexDistance(n, { q: 0, r: 0 }); let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q && h.r === n.r); let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q and u.r === n.r) || nDist <= 1; if (nIsHouse || nIsUnlocked) { isAdjacent = true; break; } } if (!isAdjacent) { showNotification(LANG[gameState.currentLang].noAdjacent, "warning"); return; } if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 1 && gameState.tutorialStep !== 9) { showNotification("فعلاً طبق آموزش پیش برو!", "info"); return; } if (gameState.tutorialStep === 9) { let isAdjacentToHouse = false; for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) === 1) { isAdjacentToHouse = true; break; } } if (isAdjacentToHouse) { showNotification("برای نیروگاه، جایی رو انتخاب کن که کنارش خونه نباشه!", "warning"); return; } } gameState.pendingUnlockTarget = target; const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; }
+    
+    if (isLocked && !isUnlocked && !isHouse && !isPP && !isOccupied) { 
+        const neighbors = [ { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r }, { q: target.q, r: target.r + 1 }, { q: target.q, r: target.r - 1 }, { q: target.q + 1, r: target.r - 1 }, { q: target.q - 1, r: target.r + 1 } ]; 
+        let isAdjacent = false; 
+        for (let n of neighbors) { 
+            let nDist = hexDistance(n, { q: 0, r: 0 }); 
+            let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q && h.r === n.r); 
+            let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q && u.r === n.r) || nDist <= 1; 
+            if (nIsHouse || nIsUnlocked) { isAdjacent = true; break; } 
+        } 
+        if (!isAdjacent) { showNotification(LANG[gameState.currentLang].noAdjacent, "warning"); return; } 
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 1 && gameState.tutorialStep !== 9) { showNotification("فعلاً طبق آموزش پیش برو!", "info"); return; } 
+        if (gameState.tutorialStep === 9) { 
+            let isAdjacentToHouse = false; 
+            for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) === 1) { isAdjacentToHouse = true; break; } } 
+            if (isAdjacentToHouse) { showNotification("برای نیروگاه، جایی رو انتخاب کن که کنارش خونه نباشه!", "warning"); return; } 
+        } 
+        gameState.pendingUnlockTarget = target; 
+        const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; 
+    }
+    
     if (gameState.tutorialStep > 0) { if (gameState.tutorialStep === 1 || gameState.tutorialStep === 9) showNotification("روی یکی از خانه‌های قفل‌شده کلیک کن!", "warning"); else if (gameState.tutorialStep === 2 || gameState.tutorialStep === 10) showNotification("حالا روی دکمه «ساخت و ساز» کلیک کن!", "warning"); else if (gameState.tutorialStep === 3 || gameState.tutorialStep === 11) showNotification("روی دکمه «ساخت» کلیک کن!", "warning"); else if (gameState.tutorialStep === 4 || gameState.tutorialStep === 12) showNotification("روی زمینی که قفلش رو باز کردی کلیک کن و تیک سبز رو بزن!", "warning"); else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning"); else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning"); else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning"); else showNotification("فعلاً طبق آموزش پیش برو!", "warning"); return; }
 }
 
