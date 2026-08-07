@@ -61,7 +61,6 @@ function saveGame(silent = false, exitAfter = false) {
                 if (settingsModal) settingsModal.style.display = 'none';
                 document.body.style.paddingTop = ''; 
                 
-                // بررسی و نمایش دکمه "ادامه بازی" در منو پس از خروج
                 const heroActions = document.querySelector('.hero-actions');
                 const startBtnHero = document.getElementById('startBtnHero');
                 if (heroActions && startBtnHero) {
@@ -122,8 +121,6 @@ function showGameOver() {
                 if (goScreen) goScreen.style.display = 'none'; 
                 if (hero) hero.style.display = 'flex'; 
                 if (header) header.style.display = 'flex'; 
-                
-                // حذف دکمه ادامه بازی چون بازی تمام شده و سیو پاک شده است
                 const continueBtn = document.getElementById('btnContinueHero');
                 if (continueBtn) continueBtn.remove();
             };
@@ -234,7 +231,7 @@ function drawMap() {
     if (gameState.isPlacing) {
         let imgToDraw = gameState.placingType === 'powerplant' ? powerplantImg : houseImg; 
         let currentScale = gameState.placingType === 'powerplant' ? POWERPLANT_SCALE : HOUSE_SCALE; 
-        let currentOffsetY = gameState.placingType === 'powerplant' ? POWERPLANT_OFFSET_Y : HOUSE_OFFSETY;
+        let currentOffsetY = gameState.placingType === 'powerplant' ? POWERPLANT_OFFSET_Y : HOUSE_OFFSET_Y;
         
         let targetHex = null;
         
@@ -467,7 +464,10 @@ function handleMapClick() {
     }
     
     if (gameState.isPlacing) {
-        if (gameState.placingSelectedHex) {
+        const isMobile = window.innerWidth <= 768;
+
+        // 1. Check if user clicked the confirm/cancel buttons (Mobile Only)
+        if (isMobile && gameState.placingSelectedHex) {
             let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
             if (selectedHexObj) {
                 let clickX = gameState.mouseX, clickY = gameState.mouseY;
@@ -492,6 +492,7 @@ function handleMapClick() {
             }
         }
 
+        // 2. Check if the newly clicked hex is valid for placing
         let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r);
         let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r);
         let tIsOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
@@ -505,8 +506,20 @@ function handleMapClick() {
         if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(target, p) <= 1) { tooClose = true; break; } } }
         if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
 
-        gameState.placingSelectedHex = target;
-        return;
+        // 3. Execute Action
+        if (isMobile) {
+            // On mobile, just place the ghost here. No validation yet!
+            gameState.placingSelectedHex = target;
+            return;
+        } else {
+            // Desktop validation and immediate build
+            if (executeBuild(target)) {
+                gameState.isPlacing = false;
+                gameState.placingSelectedHex = null;
+                updateActionTracker();
+            }
+            return;
+        }
     }
     
     if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
