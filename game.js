@@ -60,27 +60,6 @@ function saveGame(silent = false, exitAfter = false) {
                 if (pauseModal) pauseModal.style.display = 'none';
                 if (settingsModal) settingsModal.style.display = 'none';
                 document.body.style.paddingTop = ''; 
-                
-                // بررسی و نمایش دکمه "ادامه بازی" در منو پس از خروج
-                const heroActions = document.querySelector('.hero-actions');
-                const startBtnHero = document.getElementById('startBtnHero');
-                if (heroActions && startBtnHero) {
-                    let continueBtn = document.getElementById('btnContinueHero');
-                    if (hasSavedGame()) {
-                        if (!continueBtn) {
-                            continueBtn = document.createElement('button');
-                            continueBtn.id = 'btnContinueHero';
-                            continueBtn.className = 'btn-primary';
-                            continueBtn.innerText = 'ادامه بازی';
-                            continueBtn.style.marginRight = '15px';
-                            continueBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
-                            continueBtn.onclick = continueGame;
-                            heroActions.insertBefore(continueBtn, startBtnHero);
-                        }
-                    } else {
-                        if (continueBtn) continueBtn.remove();
-                    }
-                }
             }, 1000); 
         } 
         else if (!silent) { showNotification("بازی با موفقیت ذخیره شد!", "success"); }
@@ -122,10 +101,6 @@ function showGameOver() {
                 if (goScreen) goScreen.style.display = 'none'; 
                 if (hero) hero.style.display = 'flex'; 
                 if (header) header.style.display = 'flex'; 
-                
-                // حذف دکمه ادامه بازی چون بازی تمام شده و سیو پاک شده است
-                const continueBtn = document.getElementById('btnContinueHero');
-                if (continueBtn) continueBtn.remove();
             };
         }
     } else { goScreen.style.display = 'flex'; }
@@ -140,7 +115,7 @@ function continueGame() {
     html += `</div><button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer; font-family: 'Vazirmatn', sans-serif;">بستن</button></div>`;
     modal.innerHTML = html; modal.style.display = 'flex'; const closeLoadModal = document.getElementById('closeLoadModal'); if (closeLoadModal) closeLoadModal.onclick = () => { modal.style.display = 'none'; };
     document.querySelectorAll('.load-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (loadGame(name)) { modal.style.display = 'none'; showStoryScreen(); startActualGame(); } }; });
-    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name); if (!hasSavedGame()) { modal.style.display = 'none'; const continueBtn = document.getElementById('btnContinueHero'); if (continueBtn) continueBtn.remove(); } else { continueGame(); } } }; });
+    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name); if (!hasSavedGame()) { modal.style.display = 'none'; } else { continueGame(); } } }; });
 }
 
 window.startTutorial = function(val) { gameState.tutorialStep = val ? 1 : 0; const box = document.getElementById('tutorialBox'); if (!val && box) box.style.display = 'none'; if (val) updateTutorialBox(); }
@@ -371,10 +346,10 @@ function executeBuild(target) {
 }
 
 function handleMapClick() {
-    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q and p.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q and c.r === target.r);
+    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
     
     if (gameState.isPlacingMigrants) { 
-        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q and h.r === target.r);
+        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
         if (destHouse) {
             if (parseInt(destHouse.pop) < 5) {
                 destHouse.pop++; 
@@ -406,7 +381,7 @@ function handleMapClick() {
     }
     
     if (gameState.isMovingPop) { 
-        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q and h.r === target.r); 
+        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); 
         let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q and h.r === gameState.moveSource.r); 
         if (destHouse && sourceHouse && destHouse !== sourceHouse) { 
             if (destHouse.pop + gameState.moveAmount > 5) { 
@@ -468,7 +443,7 @@ function handleMapClick() {
     
     if (gameState.isPlacing) {
         if (gameState.placingSelectedHex) {
-            let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q and h.r === gameState.placingSelectedHex.r);
+            let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
             if (selectedHexObj) {
                 let clickX = gameState.mouseX, clickY = gameState.mouseY;
                 let distConfirm = Math.sqrt((clickX - (selectedHexObj.x + 35))**2 + (clickY - (selectedHexObj.y - 25))**2);
@@ -582,7 +557,84 @@ function updateExpeditions() {
     if (completed.length > 0) { const completedIds = completed.map(c => c.id); gameState.expeditions = gameState.expeditions.filter(e => !completedIds.includes(e.id)); } 
 }
 
-function updateRequests() { const tracker = document.getElementById('requestTrackerBody'); if (!tracker) return; if (gameState.isPlacingMigrants) return; let expiredIds = []; if (gameState.migrantRequests.length === 0) { if (!tracker.querySelector('.no-req-msg')) tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>'; return; } let noMsg = tracker.querySelector('.no-req-msg'); if (noMsg) noMsg.remove(); gameState.migrantRequests.forEach((req) => { let timeLeft = req.endTime - Date.now(); let reqIdStr = `req_${req.id}`; let existingDiv = tracker.querySelector(`[data-req-id="${reqIdStr}"]`); if (timeLeft <= 0) { expiredIds.push(req.id); let canFit = calculateCanFit(req.count); if (canFit) { gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); showNotification("آدم‌های در انتظار کشته شدند! شهروندان ناراحت شدند. ۱ درصد رضایت کم شد.", "warning"); } else { gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); showNotification("آدم‌های در انتظار کشته شدند! اما شهروندان راضی بودند که منابع هدر نرفت. ۱ درصد رضایت بیشتر شد.", "info"); } updateUI(); if (existingDiv) existingDiv.remove(); } else { let progress = 1 - (timeLeft / 180000); if (!existingDiv) { let div = document.createElement('div'); div.setAttribute('data-req-id', reqIdStr); div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;"; div.innerHTML = `<div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">${req.count} نفر در انتظار پذیرش</div><div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px;"><div class="req-bar" style="width: 0%; height: 100%; background: #e74c3c; transition: width 1s linear;"></div></div><button class="accept-req-btn" data-id="${req.id}" style="width: 100%; padding: 6px; background: #f4d03f; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#000;">وارد شوند</button>`; tracker.appendChild(div); div.querySelector('.accept-req-btn').addEventListener('click', function() { let id = parseInt(this.getAttribute('data-id')); acceptWaitingMigrants(id); }); } let bar = tracker.querySelector(`[data-req-id="${reqIdStr}"] .req-bar`); if (bar) bar.style.width = (progress * 100) + '%'; } }); if (expiredIds.length > 0) gameState.migrantRequests = gameState.migrantRequests.filter(r => !expiredIds.includes(r.id)); }
+function updateRequests() { 
+    const tracker = document.getElementById('requestTrackerBody'); 
+    if (!tracker) return; 
+    if (gameState.isPlacingMigrants) return; 
+    let expiredIds = []; 
+    if (gameState.migrantRequests.length === 0) { 
+        if (!tracker.querySelector('.no-req-msg')) tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>'; 
+        return; 
+    } 
+    let noMsg = tracker.querySelector('.no-req-msg'); 
+    if (noMsg) noMsg.remove(); 
+    gameState.migrantRequests.forEach((req) => { 
+        let timeLeft = req.endTime - Date.now(); 
+        let reqIdStr = `req_${req.id}`; 
+        let existingDiv = tracker.querySelector(`[data-req-id="${reqIdStr}"]`); 
+        if (timeLeft <= 0) { 
+            expiredIds.push(req.id); 
+            let canFit = calculateCanFit(req.count); 
+            if (canFit) { 
+                gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); 
+                showNotification("آدم‌های در انتظار کشته شدند! شهروندان ناراحت شدند. ۱ درصد رضایت کم شد.", "warning"); 
+            } else { 
+                gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); 
+                showNotification("آدم‌های در انتظار کشته شدند! اما شهروندان راضی بودند که منابع هدر نرفت. ۱ درصد رضایت بیشتر شد.", "info"); 
+            } 
+            updateUI(); 
+            if (existingDiv) existingDiv.remove(); 
+        } else { 
+            let progress = 1 - (timeLeft / 180000); 
+            if (!existingDiv) { 
+                let div = document.createElement('div'); 
+                div.setAttribute('data-req-id', reqIdStr); 
+                div.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 10px;"; 
+                div.innerHTML = `
+                    <div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">${req.count} نفر در انتظار پذیرش</div>
+                    <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+                        <div class="req-bar" style="width: 0%; height: 100%; background: #e74c3c; transition: width 1s linear;"></div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="accept-req-btn" data-id="${req.id}" style="flex: 1; padding: 6px; background: #f4d03f; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#000;">وارد شوند</button>
+                        <button class="discard-req-btn" data-id="${req.id}" style="flex: 1; padding: 6px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff;">رها کردن</button>
+                    </div>
+                `; 
+                tracker.appendChild(div); 
+                
+                div.querySelector('.accept-req-btn').addEventListener('click', function() { 
+                    let id = parseInt(this.getAttribute('data-id')); 
+                    acceptWaitingMigrants(id); 
+                });
+
+                div.querySelector('.discard-req-btn').addEventListener('click', function() {
+                    let id = parseInt(this.getAttribute('data-id'));
+                    let req = gameState.migrantRequests.find(r => r.id === id);
+                    if (req) {
+                        let canFit = calculateCanFit(req.count);
+                        if (canFit) {
+                            gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+                            showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، پناهندگان رها شدند. ۱ درصد رضایت کم شد.", "warning");
+                        } else {
+                            gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+                            showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info");
+                        }
+                        gameState.migrantRequests = gameState.migrantRequests.filter(r => r.id !== id);
+                        div.remove();
+                        updateUI();
+                        if (gameState.migrantRequests.length === 0 && !tracker.querySelector('.no-req-msg')) {
+                            tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>';
+                        }
+                    }
+                });
+            } 
+            let bar = tracker.querySelector(`[data-req-id="${reqIdStr}"] .req-bar`); 
+            if (bar) bar.style.width = (progress * 100) + '%'; 
+        } 
+    }); 
+    if (expiredIds.length > 0) gameState.migrantRequests = gameState.migrantRequests.filter(r => !expiredIds.includes(r.id)); 
+}
+
 function calculateExpeditionResult(exp) { if (exp.isTutorial) return { wood: 10, stone: 10, food: 0, fuel: 0, casualties: 0 }; const regionData = { 'کویر لوت': { pcts: [100, 80, 75, 70, 50, 20, 0], res: { wood: 30, stone: 30, food: 20, fuel: 5 } }, 'آبشار لاتون': { pcts: [70, 60, 50, 40, 20, 0], res: { wood: 0, stone: 20, food: 10, fuel: 0 } }, 'تخت جمشید': { pcts: [40, 30, 20, 15, 10, 0], res: { wood: 10, stone: 10, food: 0, fuel: 0 } } }; const r = regionData[exp.region]; if (!r) return { casualties: exp.troops, wood: 0, stone: 0, food: 0, fuel: 0 }; const pct = r.pcts[Math.floor(Math.random() * r.pcts.length)]; const exact = (pct / 100) * exp.troops; let casualties = Math.floor(exact); if (Math.random() < (exact - casualties)) casualties++; casualties = Math.min(casualties, exp.troops); const survivors = exp.troops - casualties; return { wood: survivors * r.res.wood, stone: survivors * r.res.stone, food: survivors * r.res.food, fuel: survivors * r.res.fuel, casualties }; }
 function showExpeditionResult(exp, res) { const modal = document.getElementById('expeditionResultModal'); const txt = document.getElementById('resultText'); if(!modal || !txt) return; const t = LANG[gameState.currentLang]; let html = `<div style="margin-bottom:10px;"><strong style="color:#f4d03f;">${t.resultRegion}</strong> ${exp.region}</div>`; html += `<div style="margin-bottom:10px;"><strong style="color:#e74c3c;">${t.resultCasualties}</strong> ${res.casualties} ${gameState.currentLang === 'en' ? 'troops' : 'نفر'}</div>`; html += `<div style="margin-bottom:10px; border-top:1px solid #333; padding-top:10px;"><strong style="color:#f4d03f;">${t.resultRes}</strong><br>`; let foundRes = false, resList = ''; if (res.wood > 0) { resList += `🪵 ${t.wood}: ${res.wood}<br>`; foundRes = true; } if (res.stone > 0) { resList += `🪨 ${t.stone}: ${res.stone}<br>`; foundRes = true; } if (res.food > 0) { resList += `🍖 ${t.food}: ${res.food}<br>`; foundRes = true; } if (res.fuel > 0) { resList += `🔥 ${t.fuel}: ${res.fuel}<br>`; foundRes = true; } if (!foundRes) { html += `${t.resultNone}<br>`; } else { html += resList; } html += `</div>`; txt.innerHTML = html; modal.style.display = 'block'; }
 function showMigrantModal(count) { const modal = document.getElementById('migrantModal'); const txt = document.getElementById('migrantText'); if(!modal || !txt) return; txt.innerText = `${count} نفر می‌خواهند به منطقه امن شما بپیوندند. آیا اجازه می‌دهید؟`; modal.style.display = 'flex'; const migrantReject = document.getElementById('migrantReject'); if(migrantReject) migrantReject.onclick = () => { modal.style.display = 'none'; let canFit = calculateCanFit(count); if (canFit) { gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، کمک نکردید. ۱ درصد رضایت کم شد.", "warning"); } else { gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info"); } updateUI(); }; const migrantWait = document.getElementById('migrantWait'); if(migrantWait) migrantWait.onclick = () => { modal.style.display = 'none'; gameState.migrantRequests.push({ id: Date.now(), count: count, endTime: Date.now() + 180000 }); showNotification("آدم‌ها در انتظار نگه داشته شدند. به بخش درخواست‌ها مراجعه کنید.", "info"); }; const migrantAccept = document.getElementById('migrantAccept'); if(migrantAccept) migrantAccept.onclick = () => { modal.style.display = 'none'; startPlacingMigrants(count); }; }
