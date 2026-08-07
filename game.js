@@ -6,12 +6,12 @@ const BASE_Y_RATIO = 0.85;
 const HOUSE_OFFSET_X = 0;         
 const HOUSE_OFFSET_Y = 25;        
 const POWERPLANT_OFFSET_Y = 10;   
-const MUSIC_START_TIME = 5;       // تغییر از 15 به 5 ثانیه
+const MUSIC_START_TIME = 5;       
 const NEXT_DAY_BTN_TOP = 70;      
-const NEXT_DAY_BTN_SIZE = 64;     // بزرگنمایی دکمه روز بعد در دسکتاپ
+const NEXT_DAY_BTN_SIZE = 64;     
 const PAUSE_BTN_SIZE = 32;        
 const MOBILE_NEXT_DAY_BTN_TOP = 132;  
-const MOBILE_NEXT_DAY_BTN_SIZE = 52; // بزرگنمایی دکمه روز بعد در موبایل
+const MOBILE_NEXT_DAY_BTN_SIZE = 52; 
 // =================================================================
 
 let bgMusic = null; 
@@ -370,11 +370,58 @@ function handleMapClick() {
         let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); 
         let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q && h.r === gameState.moveSource.r); 
         if (destHouse && sourceHouse && destHouse !== sourceHouse) { 
-            if (destHouse.pop + gameState.moveAmount > 5) { showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); gameState.isMovingPop = false; updateActionTracker(); return; } 
-            if (sourceHouse.pop < destHouse.pop) { showNotification("جابه‌جایی نامناسب! یک درصد رضایت کم شد.", "warning"); gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); updateUI(); } 
-            if (sourceHouse.receivedToday) { showAngryMoveModal(); sourceHouse.receivedToday = false; gameState.isMovingPop = false; updateActionTracker(); return; } 
-            sourceHouse.pop -= gameState.moveAmount; destHouse.pop += gameState.moveAmount; destHouse.receivedToday = true; updateUI(); gameState.isMovingPop = false; updateActionTracker();
-            if (gameState.tutorialStep === 16) { gameState.tutorialStep = 17; updateTutorialBox(); } 
+            if (destHouse.pop + gameState.moveAmount > 5) { 
+                showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); 
+                gameState.isMovingPop = false; 
+                updateActionTracker(); 
+                return; 
+            } 
+            
+            // بررسی نارضایتی از جابجایی زیاد (در یک روز)
+            if (sourceHouse.receivedToday) { 
+                showAngryMoveModal(); 
+                sourceHouse.receivedToday = false; 
+                gameState.isMovingPop = false; 
+                updateActionTracker(); 
+                return; 
+            } 
+            
+            // سیستم هوشمند رضایت
+            const sourceWasCrowded = sourceHouse.pop >= 4;
+            const destWillBeCrowded = destHouse.pop + gameState.moveAmount >= 4;
+
+            let satisfactionChange = 0;
+            let moveMessage = "جابه‌جایی انجام شد.";
+
+            if (sourceWasCrowded && !destWillBeCrowded) {
+                satisfactionChange = 1;
+                moveMessage = "شرایط زندگی بهتر شد! ۱ درصد رضایت بیشتر شد.";
+            } else if (!sourceWasCrowded && destWillBeCrowded) {
+                satisfactionChange = -1;
+                moveMessage = "خونه مقصد شلوغ‌تر شد! ۱ درصد رضایت کم شد.";
+            }
+
+            if (satisfactionChange > 0) {
+                gameState.satisfaction = Math.min(100, gameState.satisfaction + satisfactionChange);
+                showNotification(moveMessage, "success");
+            } else if (satisfactionChange < 0) {
+                gameState.satisfaction = Math.max(0, gameState.satisfaction + satisfactionChange);
+                showNotification(moveMessage, "warning");
+            } else {
+                showNotification(moveMessage, "info");
+            }
+
+            sourceHouse.pop -= gameState.moveAmount; 
+            destHouse.pop += gameState.moveAmount; 
+            destHouse.receivedToday = true; 
+            updateUI(); 
+            gameState.isMovingPop = false; 
+            updateActionTracker();
+            
+            if (gameState.tutorialStep === 16) { 
+                gameState.tutorialStep = 17; 
+                updateTutorialBox(); 
+            } 
         } else {
             if (!destHouse) showNotification("لطفاً روی یک خانه کلیک کنید!", "warning");
             else if (destHouse === sourceHouse) showNotification("لطفاً روی خانه دیگری کلیک کنید!", "warning");
@@ -461,7 +508,7 @@ function updateRequests() { const tracker = document.getElementById('requestTrac
 function calculateExpeditionResult(exp) { if (exp.isTutorial) return { wood: 10, stone: 10, food: 0, fuel: 0, casualties: 0 }; const regionData = { 'کویر لوت': { pcts: [100, 80, 75, 70, 50, 20, 0], res: { wood: 30, stone: 30, food: 20, fuel: 5 } }, 'آبشار لاتون': { pcts: [70, 60, 50, 40, 20, 0], res: { wood: 0, stone: 20, food: 10, fuel: 0 } }, 'تخت جمشید': { pcts: [40, 30, 20, 15, 10, 0], res: { wood: 10, stone: 10, food: 0, fuel: 0 } } }; const r = regionData[exp.region]; if (!r) return { casualties: exp.troops, wood: 0, stone: 0, food: 0, fuel: 0 }; const pct = r.pcts[Math.floor(Math.random() * r.pcts.length)]; const exact = (pct / 100) * exp.troops; let casualties = Math.floor(exact); if (Math.random() < (exact - casualties)) casualties++; casualties = Math.min(casualties, exp.troops); const survivors = exp.troops - casualties; return { wood: survivors * r.res.wood, stone: survivors * r.res.stone, food: survivors * r.res.food, fuel: survivors * r.res.fuel, casualties }; }
 function showExpeditionResult(exp, res) { const modal = document.getElementById('expeditionResultModal'); const txt = document.getElementById('resultText'); if(!modal || !txt) return; const t = LANG[gameState.currentLang]; let html = `<div style="margin-bottom:10px;"><strong style="color:#f4d03f;">${t.resultRegion}</strong> ${exp.region}</div>`; html += `<div style="margin-bottom:10px;"><strong style="color:#e74c3c;">${t.resultCasualties}</strong> ${res.casualties} ${gameState.currentLang === 'en' ? 'troops' : 'نفر'}</div>`; html += `<div style="margin-bottom:10px; border-top:1px solid #333; padding-top:10px;"><strong style="color:#f4d03f;">${t.resultRes}</strong><br>`; let foundRes = false, resList = ''; if (res.wood > 0) { resList += `🪵 ${t.wood}: ${res.wood}<br>`; foundRes = true; } if (res.stone > 0) { resList += `🪨 ${t.stone}: ${res.stone}<br>`; foundRes = true; } if (res.food > 0) { resList += `🍖 ${t.food}: ${res.food}<br>`; foundRes = true; } if (res.fuel > 0) { resList += `🔥 ${t.fuel}: ${res.fuel}<br>`; foundRes = true; } if (!foundRes) { html += `${t.resultNone}<br>`; } else { html += resList; } html += `</div>`; txt.innerHTML = html; modal.style.display = 'block'; }
 function showMigrantModal(count) { const modal = document.getElementById('migrantModal'); const txt = document.getElementById('migrantText'); if(!modal || !txt) return; txt.innerText = `${count} نفر می‌خواهند به منطقه امن شما بپیوندند. آیا اجازه می‌دهید؟`; modal.style.display = 'flex'; const migrantReject = document.getElementById('migrantReject'); if(migrantReject) migrantReject.onclick = () => { modal.style.display = 'none'; let canFit = calculateCanFit(count); if (canFit) { gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، کمک نکردید. ۱ درصد رضایت کم شد.", "warning"); } else { gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info"); } updateUI(); }; const migrantWait = document.getElementById('migrantWait'); if(migrantWait) migrantWait.onclick = () => { modal.style.display = 'none'; gameState.migrantRequests.push({ id: Date.now(), count: count, endTime: Date.now() + 180000 }); showNotification("آدم‌ها در انتظار نگه داشته شدند. به بخش درخواست‌ها مراجعه کنید.", "info"); }; const migrantAccept = document.getElementById('migrantAccept'); if(migrantAccept) migrantAccept.onclick = () => { modal.style.display = 'none'; startPlacingMigrants(count); }; }
-function nextDay() { if (gameState.gameOver || gameState.isPaused) return; gameState.day++; let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); let starvedCount = 0; if (gameState.food < totalPop) { starvedCount = totalPop - gameState.food; gameState.food = 0; let toKill = starvedCount; while (toKill > 0) { let eligibleHouses = gameState.HOUSE_HEXES.filter(h => h.pop > 0); if (eligibleHouses.length === 0) break; let house = eligibleHouses[Math.floor(Math.random() * eligibleHouses.length)]; house.pop--; toKill--; } let remainingPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); if (remainingPop <= 0) { showGameOver(); return; } let hopeReduction = Math.ceil(starvedCount / 2); gameState.hope = Math.max(0, gameState.hope - hopeReduction); let modal = document.getElementById('starvationModal'); if (modal) { document.getElementById('starvationText').innerText = `به دلیل کمبود غذا، ${starvedCount} نفر از شهروندان جان باختند. لطفاً منابع غذایی رو مدیریت کن!`; modal.style.display = 'flex'; } } else { gameState.food -= totalPop; } gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length); gameState.HOUSE_HEXES.forEach(h => h.receivedToday = false); let hasOvercrowded = gameState.HOUSE_HEXES.some(h => h.pop === 5); let hasSpace = gameState.HOUSE_HEXES.some(h => h.pop < 3); if (hasOvercrowded && hasSpace && gameState.HOUSE_HEXES.length > 1) { const cm = document.getElementById('complaintModal'); if(cm) cm.style.display = 'flex'; } updateUI(); if (Math.random() < 0.33) { let numMigrants = Math.floor(Math.random() * gameState.day) + 1; showMigrantModal(numMigrants); } }
+function nextDay() { if (gameState.gameOver || gameState.isPaused) return; gameState.day++; let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); let starvedCount = 0; if (gameState.food < totalPop) { starvedCount = totalPop - gameState.food; gameState.food = 0; let toKill = starvedCount; while (toKill > 0) { let eligibleHouses = gameState.HOUSE_HEXES.filter(h => h.pop > 0); if (eligibleHouses.length === 0) break; let house = eligibleHouses[Math.floor(Math.random() * eligibleHouses.length)]; house.pop--; toKill--; } let remainingPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); if (remainingPop <= 0) { showGameOver(); return; } let hopeReduction = Math.ceil(starvedCount / 2); gameState.hope = Math.max(0, gameState.hope - hopeReduction); let modal = document.getElementById('starvationModal'); if (modal) { document.getElementById('starvationText').innerText = `به دلیل کمبود غذا، ${starvedCount} نفر از شهروندان جان باختند. لطفاً منابع غذایی رو مدیریت کن!`; modal.style.display = 'flex'; } } else { gameState.food -= totalPop; } gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length); gameState.HOUSE_HEXES.forEach(h => h.receivedToday = false); let hasOvercrowded = gameState.HOUSE_HEXES.some(h => h.pop >= 5); let hasSpace = gameState.HOUSE_HEXES.some(h => h.pop < 3); if (hasOvercrowded && hasSpace && gameState.HOUSE_HEXES.length > 1) { const cm = document.getElementById('complaintModal'); if(cm) cm.style.display = 'flex'; } updateUI(); if (Math.random() < 0.33) { let numMigrants = Math.floor(Math.random() * gameState.day) + 1; showMigrantModal(numMigrants); } }
 function startGameLoop() {}
 function updateUI() { let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); gameState.population = totalPop; let ppCount = gameState.POWERPLANT_HEXES.length; let heatCapacity = ppCount * 10; if (totalPop > 0) gameState.heat = Math.min(100, Math.round((heatCapacity / totalPop) * 100)); else gameState.heat = 0; const el = id => document.getElementById(id); const updateBar = (id, value, max) => { const valEl = el(id); if (valEl) { const barEl = valEl.parentElement.querySelector('.resource-bar'); if (barEl) { let percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0; barEl.style.width = percentage + '%'; } if (id === 'heat') { const parent = valEl.parentElement; if (parent && (!parent.previousElementSibling || !parent.previousElementSibling.classList.contains('mobile-line-break'))) { const lineBreak = document.createElement('div'); lineBreak.className = 'mobile-line-break'; parent.parentNode.insertBefore(lineBreak, parent); } } } }; if(el('day')) el('day').textContent = gameState.day; if(el('population')) el('population').textContent = gameState.population; if(el('wood')) el('wood').textContent = gameState.wood; if(el('stone')) el('stone').textContent = gameState.stone; if(el('food')) el('food').textContent = Math.floor(gameState.food); if(el('fuel')) el('fuel').textContent = Math.floor(gameState.fuel); if(el('heat')) el('heat').textContent = gameState.heat + '%'; if(el('hope')) el('hope').textContent = gameState.hope + '%'; if(el('satisfaction')) el('satisfaction').textContent = gameState.satisfaction + '%'; updateBar('population', gameState.population, 20); updateBar('wood', gameState.wood, 50); updateBar('stone', gameState.stone, 50); updateBar('food', gameState.food, 50); updateBar('fuel', gameState.fuel, 50); updateBar('heat', gameState.heat, 100); updateBar('hope', gameState.hope, 100); updateBar('satisfaction', gameState.satisfaction, 100); }
 function showNotification(text, type = 'info') { let c = document.getElementById('notification-container'); if (!c) { c = document.createElement('div'); c.id = 'notification-container'; c.style.position = 'fixed'; c.style.top = '90px'; c.style.left = '50%'; c.style.transform = 'translateX(-50%)'; c.style.zIndex = '10000'; c.style.display = 'flex'; c.style.flexDirection = 'column'; c.style.alignItems = 'center'; c.style.gap = '6px'; document.body.appendChild(c); } const el = document.createElement('div'); el.className = `notification ${type}`; el.textContent = text; c.appendChild(el); setTimeout(() => { if (el.parentNode) el.remove(); }, 3000); }
