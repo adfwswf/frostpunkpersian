@@ -60,6 +60,27 @@ function saveGame(silent = false, exitAfter = false) {
                 if (pauseModal) pauseModal.style.display = 'none';
                 if (settingsModal) settingsModal.style.display = 'none';
                 document.body.style.paddingTop = ''; 
+                
+                // بررسی و نمایش دکمه "ادامه بازی" در منو پس از خروج
+                const heroActions = document.querySelector('.hero-actions');
+                const startBtnHero = document.getElementById('startBtnHero');
+                if (heroActions && startBtnHero) {
+                    let continueBtn = document.getElementById('btnContinueHero');
+                    if (hasSavedGame()) {
+                        if (!continueBtn) {
+                            continueBtn = document.createElement('button');
+                            continueBtn.id = 'btnContinueHero';
+                            continueBtn.className = 'btn-primary';
+                            continueBtn.innerText = 'ادامه بازی';
+                            continueBtn.style.marginRight = '15px';
+                            continueBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            continueBtn.onclick = continueGame;
+                            heroActions.insertBefore(continueBtn, startBtnHero);
+                        }
+                    } else {
+                        if (continueBtn) continueBtn.remove();
+                    }
+                }
             }, 1000); 
         } 
         else if (!silent) { showNotification("بازی با موفقیت ذخیره شد!", "success"); }
@@ -101,6 +122,10 @@ function showGameOver() {
                 if (goScreen) goScreen.style.display = 'none'; 
                 if (hero) hero.style.display = 'flex'; 
                 if (header) header.style.display = 'flex'; 
+                
+                // حذف دکمه ادامه بازی چون بازی تمام شده و سیو پاک شده است
+                const continueBtn = document.getElementById('btnContinueHero');
+                if (continueBtn) continueBtn.remove();
             };
         }
     } else { goScreen.style.display = 'flex'; }
@@ -115,7 +140,7 @@ function continueGame() {
     html += `</div><button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer; font-family: 'Vazirmatn', sans-serif;">بستن</button></div>`;
     modal.innerHTML = html; modal.style.display = 'flex'; const closeLoadModal = document.getElementById('closeLoadModal'); if (closeLoadModal) closeLoadModal.onclick = () => { modal.style.display = 'none'; };
     document.querySelectorAll('.load-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (loadGame(name)) { modal.style.display = 'none'; showStoryScreen(); startActualGame(); } }; });
-    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name); if (!hasSavedGame()) { modal.style.display = 'none'; } else { continueGame(); } } }; });
+    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name); if (!hasSavedGame()) { modal.style.display = 'none'; const continueBtn = document.getElementById('btnContinueHero'); if (continueBtn) continueBtn.remove(); } else { continueGame(); } } }; });
 }
 
 window.startTutorial = function(val) { gameState.tutorialStep = val ? 1 : 0; const box = document.getElementById('tutorialBox'); if (!val && box) box.style.display = 'none'; if (val) updateTutorialBox(); }
@@ -346,10 +371,10 @@ function executeBuild(target) {
 }
 
 function handleMapClick() {
-    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
+    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q and p.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q and c.r === target.r);
     
     if (gameState.isPlacingMigrants) { 
-        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
+        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q and h.r === target.r);
         if (destHouse) {
             if (parseInt(destHouse.pop) < 5) {
                 destHouse.pop++; 
@@ -381,8 +406,8 @@ function handleMapClick() {
     }
     
     if (gameState.isMovingPop) { 
-        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); 
-        let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q && h.r === gameState.moveSource.r); 
+        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q and h.r === target.r); 
+        let sourceHouse = gameState.HOUSE_HEXES.find(h => h.q === gameState.moveSource.q and h.r === gameState.moveSource.r); 
         if (destHouse && sourceHouse && destHouse !== sourceHouse) { 
             if (destHouse.pop + gameState.moveAmount > 5) { 
                 showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); 
@@ -443,7 +468,7 @@ function handleMapClick() {
     
     if (gameState.isPlacing) {
         if (gameState.placingSelectedHex) {
-            let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
+            let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q and h.r === gameState.placingSelectedHex.r);
             if (selectedHexObj) {
                 let clickX = gameState.mouseX, clickY = gameState.mouseY;
                 let distConfirm = Math.sqrt((clickX - (selectedHexObj.x + 35))**2 + (clickY - (selectedHexObj.y - 25))**2);
@@ -467,10 +492,10 @@ function handleMapClick() {
             }
         }
 
-        let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r);
-        let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r);
-        let tIsOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
-        let tIsUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || hexDistance(target, { q: 0, r: 0 }) <= 1;
+        let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q and h.r === target.r);
+        let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q and p.r === target.r);
+        let tIsOccupied = gameState.constructionSites.some(c => c.q === target.q and c.r === target.r);
+        let tIsUnlocked = gameState.unlockedHexes.some(u => u.q === target.q and u.r === target.r) || hexDistance(target, { q: 0, r: 0 }) <= 1;
 
         if (tIsHouse || tIsPP || tIsOccupied) { showNotification(LANG[gameState.currentLang].occupied, "warning"); return; }
         if (!tIsUnlocked) { showNotification("یک مکان باز رو انتخاب کن!", "warning"); return; }
@@ -484,19 +509,19 @@ function handleMapClick() {
         return;
     }
     
-    if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
+    if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q and h.r === target.r); let isMainHouse = (house.q === 0 and house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
     
     if (isLocked && !isUnlocked && !isHouse && !isPP && !isOccupied) { 
         const neighbors = [ { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r }, { q: target.q, r: target.r + 1 }, { q: target.q, r: target.r - 1 }, { q: target.q + 1, r: target.r - 1 }, { q: target.q - 1, r: target.r + 1 } ]; 
         let isAdjacent = false; 
         for (let n of neighbors) { 
             let nDist = hexDistance(n, { q: 0, r: 0 }); 
-            let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q && h.r === n.r); 
-            let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q && u.r === n.r) || nDist <= 1; 
+            let nIsHouse = gameState.HOUSE_HEXES.some(h => h.q === n.q and h.r === n.r); 
+            let nIsUnlocked = gameState.unlockedHexes.some(u => u.q === n.q and u.r === n.r) || nDist <= 1; 
             if (nIsHouse || nIsUnlocked) { isAdjacent = true; break; } 
         } 
         if (!isAdjacent) { showNotification(LANG[gameState.currentLang].noAdjacent, "warning"); return; } 
-        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 1 && gameState.tutorialStep !== 9) { showNotification("فعلاً طبق آموزش پیش برو!", "info"); return; } 
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 1 and gameState.tutorialStep !== 9) { showNotification("فعلاً طبق آموزش پیش برو!", "info"); return; } 
         if (gameState.tutorialStep === 9) { 
             let isAdjacentToHouse = false; 
             for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) === 1) { isAdjacentToHouse = true; break; } } 
@@ -524,7 +549,7 @@ function applyLang(lang) { gameState.currentLang = lang; const t = LANG[lang]; c
 
 function updateTutorialBox() { const txt = document.getElementById('tutorialText'); const btn = document.getElementById('tutorialBtn'); const pointer = document.getElementById('tutorialPointer'); const box = document.getElementById('tutorialBox'); if(!txt || !btn || !pointer || !box) return; if (gameState.tutorialStep === 0) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; return; } box.style.display = 'flex'; if (gameState.tutorialStep === -1) { txt.innerHTML = "سلام! من راهنمای تو در این سرمای سهم‌گین هستم. می‌خوای آموزش رو ببینی یا خودت بلدی؟<br><br><div style='text-align:center; margin-top:10px;'><button onclick='startTutorial(true)' style='padding: 8px 15px; background: #f4d03f; border:none; border-radius:4px; cursor:pointer; color:#000; font-weight:bold; font-family:Vazirmatn;'>آموزش ببین</button> <button onclick='startTutorial(false)' style='padding: 8px 15px; background: transparent; border:1px solid #aaa; border-radius:4px; cursor:pointer; color:#fff; font-family:Vazirmatn; margin-right:10px;'>بلدم، شروع کن</button></div>"; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 1) { txt.innerHTML = "برای شروع، روی یکی از خانه‌های قفل‌شده اطراف منطقه امن کلیک کن تا با ۱۰ سنگ قفلش رو باز کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 2) { txt.innerHTML = "آفرین! قفل باز شد. حالا روی دکمه «ساخت و ساز» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 3) { txt.innerHTML = "خوبه! حالا روی دکمه «ساخت» در بخش «ساخت خانه جدید» کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 4) { txt.innerHTML = "حالا روی اونجایی که قفلش رو باز کردی کلیک کن و بعد روی تیک سبز (✓) بزن تا خونه ساخته بشه و ۱۰ چوب از تو کم بشه."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 5) { txt.innerHTML = "خونه در حال ساخت است. حالا وقتشه بریم منابع بیشتری پیدا کنیم. روی دکمه «اکتشاف» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnExplore'); } else if (gameState.tutorialStep === 6) { txt.innerHTML = "اینجا سه منطقه هست. روی منطقه «تخت جمشید» کلیک کن و دکمه «اعزام» اون رو بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 7) { txt.innerHTML = "فعلاً در آموزش باید یک نفر رو انتخاب کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 8) { txt.innerHTML = "آفرین! یادت باشه هر روز به ازای هر نفر یک غذا و به ازای هر نیروگاه یک سوخت مصرف میشه! حالا برای گرم شدن، باید نیروگاه بسازی. روی دکمه متوجه شدم بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 9; updateTutorialBox(); }; } else if (gameState.tutorialStep === 9) { txt.innerHTML = "برای ساخت نیروگاه، باید یه زمین جدید باز کنی. روی یک مکان قفل‌شده کلیک کن که کنارش خونه نباشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 10) { txt.innerHTML = "آفرین! حالا دوباره روی دکمه «ساخت و ساز» کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 11) { txt.innerHTML = "این بار روی دکمه «ساخت» نیروگاه کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 12) { txt.innerHTML = "حالا روی زمینی که تازه باز کردی کلیک کن و روی تیک سبز (✓) بزن تا نیروگاه ساخته بشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 13) { txt.innerHTML = "نیروگاه در حال ساخت است. حالا باید جمعیت رو بین خونه‌هات پخش کنی. روی دکمه متوجه شدم بزن و بعد روی خونه اصلی کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 14; updateTutorialBox(); }; } else if (gameState.tutorialStep === 14) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 15) { txt.innerHTML = "همونطور که می‌بینی، نمی‌تونی همه آدم‌ها رو انتقال بدی. حداقل یک نفر (یعنی خودت!) باید تو خونه بمونه. پس ۱ تا ۴ نفر رو انتخاب کن و بعد روی دکمه «انتقال» بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 16) { txt.innerHTML = "حالا روی خونه جدیدت کلیک کن تا آدم‌ها اونجا مستقر بشن."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 17) { txt.innerHTML = "عالیه فقط یادت باشه آدم هات رو توی یک خونه نگه نداری کلافه میشن"; btn.style.display = 'inline-block'; btn.innerText = "پایان آموزش"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 0; box.style.display = 'none'; btn.style.display = 'none'; }; } }
 function movePointer(elementId) { const pointer = document.getElementById('tutorialPointer'); const el = document.getElementById(elementId); if (el && pointer) { const rect = el.getBoundingClientRect(); pointer.style.display = 'block'; pointer.style.left = (rect.left + rect.width / 2 - 30) + 'px'; pointer.style.top = (rect.top + rect.height / 2 - 30) + 'px'; } else if (pointer) { pointer.style.display = 'none'; } }
-function startExpedition(regionName, troops) { const isTutorial = gameState.tutorialStep === 7.5; gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); if (mainHouse) mainHouse.pop = Math.max(0, mainHouse.pop - troops); updateUI(); showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } }
+function startExpedition(regionName, troops) { const isTutorial = gameState.tutorialStep === 7.5; gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 and h.r === 0); if (mainHouse) mainHouse.pop = Math.max(0, mainHouse.pop - troops); updateUI(); showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } }
 
 function updateExpeditions() { 
     const tracker = document.getElementById('expeditionTracker'); 
@@ -551,7 +576,7 @@ function updateExpeditions() {
         const res = calculateExpeditionResult(exp); 
         showExpeditionResult(exp, res); 
         let survivors = exp.troops - res.casualties; 
-        if (survivors > 0) { let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); if (mainHouse) mainHouse.pop += survivors; } 
+        if (survivors > 0) { let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 and h.r === 0); if (mainHouse) mainHouse.pop += survivors; } 
         gameState.wood += res.wood; gameState.stone += res.stone; gameState.food += res.food; gameState.fuel += res.fuel; updateUI(); 
     }); 
     if (completed.length > 0) { const completedIds = completed.map(c => c.id); gameState.expeditions = gameState.expeditions.filter(e => !completedIds.includes(e.id)); } 
