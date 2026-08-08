@@ -3,13 +3,13 @@ const PERSPECTIVE_Y = 0.6;
 const HOUSE_SCALE = 1.1;          
 const POWERPLANT_SCALE = 1.2;     
 const BARRACKS_SCALE = 1.1;       
-const COUNCIL_SCALE = 1.2;        
+const COUNCIL_SCALE = 1.1;        // هم‌اندازه خانه شد
 const BASE_Y_RATIO = 0.85;        
 const HOUSE_OFFSET_X = 0;         
 const HOUSE_OFFSET_Y = 25;        
 const POWERPLANT_OFFSET_Y = 10;   
 const BARRACKS_OFFSET_Y = 25;     
-const COUNCIL_OFFSET_Y = 10;      
+const COUNCIL_OFFSET_Y = 30;      // نزدیک‌تر به لبه پایین شد
 const MUSIC_START_TIME = 5;       
 const NEXT_DAY_BTN_TOP = 70;      
 const NEXT_DAY_BTN_SIZE = 64;     
@@ -29,8 +29,10 @@ const gameState = {
     HOUSE_HEXES: [{ q: 0, r: 0, pop: 5, daysOvercrowded: 0, lastReceived: 0, receivedToday: false }],
     POWERPLANT_HEXES: [], 
     BARRACKS_HEXES: [], 
-    COUNCIL_HEXES: [{ q: 2, r: -1 }], // مجلس از ابتدای بازی با یک خونه فاصله نسبت به خانه اصلی قرار دارد
-    tutorialStep: -1, unlockedHexes: [], selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
+    COUNCIL_HEXES: [{ q: 2, r: -1 }], 
+    tutorialStep: -1, 
+    unlockedHexes: [{ q: 2, r: -1 }], // زمین زیر مجلس از اول باز است
+    selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
     keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa'
 };
 
@@ -71,6 +73,26 @@ function saveGame(silent = false, exitAfter = false) {
                 if (pauseModal) pauseModal.style.display = 'none';
                 if (settingsModal) settingsModal.style.display = 'none';
                 document.body.style.paddingTop = ''; 
+                
+                const heroActions = document.querySelector('.hero-actions');
+                const startBtnHero = document.getElementById('startBtnHero');
+                if (heroActions && startBtnHero) {
+                    let continueBtn = document.getElementById('btnContinueHero');
+                    if (hasSavedGame()) {
+                        if (!continueBtn) {
+                            continueBtn = document.createElement('button');
+                            continueBtn.id = 'btnContinueHero';
+                            continueBtn.className = 'btn-primary';
+                            continueBtn.innerText = 'ادامه بازی';
+                            continueBtn.style.marginRight = '15px';
+                            continueBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            continueBtn.onclick = continueGame;
+                            heroActions.insertBefore(continueBtn, startBtnHero);
+                        }
+                    } else {
+                        if (continueBtn) continueBtn.remove();
+                    }
+                }
             }, 1000); 
         } 
         else if (!silent) { showNotification("بازی با موفقیت ذخیره شد!", "success"); }
@@ -93,7 +115,22 @@ function showSaveNameModal(exitAfter = false) {
     modal.style.display = 'flex';
 }
 
-function loadGame(saveName) { try { let saves = getAllSaves(); let savedData = saves[saveName]; if (savedData) { gameState.currentSaveName = saveName; gameState.day = savedData.day; gameState.population = savedData.population; gameState.fuel = savedData.fuel; gameState.food = savedData.food; gameState.wood = savedData.wood; gameState.stone = savedData.stone; gameState.heat = savedData.heat; gameState.hope = savedData.hope; gameState.satisfaction = savedData.satisfaction; gameState.HOUSE_HEXES = savedData.HOUSE_HEXES; gameState.POWERPLANT_HEXES = savedData.POWERPLANT_HEXES; gameState.BARRACKS_HEXES = savedData.BARRACKS_HEXES || []; gameState.COUNCIL_HEXES = savedData.COUNCIL_HEXES || [{ q: 2, r: -1 }]; gameState.unlockedHexes = savedData.unlockedHexes; gameState.tutorialStep = savedData.tutorialStep !== undefined ? savedData.tutorialStep : 0; return true; } } catch (e) {} return false; }
+function loadGame(saveName) { 
+    try { 
+        let saves = getAllSaves(); let savedData = saves[saveName]; 
+        if (savedData) { 
+            gameState.currentSaveName = saveName; 
+            gameState.day = savedData.day; gameState.population = savedData.population; gameState.fuel = savedData.fuel; gameState.food = savedData.food; gameState.wood = savedData.wood; gameState.stone = savedData.stone; gameState.heat = savedData.heat; gameState.hope = savedData.hope; gameState.satisfaction = savedData.satisfaction; 
+            gameState.HOUSE_HEXES = savedData.HOUSE_HEXES; 
+            gameState.POWERPLANT_HEXES = savedData.POWERPLANT_HEXES; 
+            gameState.BARRACKS_HEXES = savedData.BARRACKS_HEXES || []; 
+            gameState.COUNCIL_HEXES = savedData.COUNCIL_HEXES || [{ q: 2, r: -1 }]; 
+            gameState.unlockedHexes = savedData.unlockedHexes || [{ q: 2, r: -1 }]; 
+            gameState.tutorialStep = savedData.tutorialStep !== undefined ? savedData.tutorialStep : 0; 
+            return true; 
+        } 
+    } catch (e) {} return false; 
+}
 function deleteGame(saveName) { let saves = getAllSaves(); if (saves[saveName]) { delete saves[saveName]; localStorage.setItem('lastWarmthSaves', JSON.stringify(saves)); } }
 
 function showGameOver() {
@@ -205,56 +242,27 @@ function updateActionTracker() {
     else if (gameState.isPlacing) currentState = 'build_' + gameState.placingType;
 
     if (currentState === lastTrackerState) return;
-    
     if (currentState === 'none') {
         const tracker = document.getElementById('actionTracker');
-        if (tracker) {
-            tracker.style.display = 'none';
-            tracker.innerHTML = '';
-        }
+        if (tracker) { tracker.style.display = 'none'; tracker.innerHTML = ''; }
         lastTrackerState = 'none';
         return;
     }
-
     lastTrackerState = currentState;
-
     const tracker = document.getElementById('actionTracker');
     if (!tracker) return;
     let html = '';
-    
     if (currentState === 'move') {
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;">
-            <div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div>
-            <button id="cancelMoveTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button>
-        </div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div><button id="cancelMoveTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button></div>`;
     } else if (currentState.startsWith('build_')) {
         const buildingName = gameState.placingType === 'powerplant' ? 'نیروگاه' : (gameState.placingType === 'barracks' ? 'پادگان' : 'خانه');
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;">
-            <div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">در حال انتخاب موقعیت ${buildingName}</div>
-            <button id="cancelBuildTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button>
-        </div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">در حال انتخاب موقعیت ${buildingName}</div><button id="cancelBuildTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button></div>`;
     }
-
-    tracker.style.display = 'flex';
-    tracker.innerHTML = html;
-
+    tracker.style.display = 'flex'; tracker.innerHTML = html;
     const cancelMoveBtn = document.getElementById('cancelMoveTrackBtn');
-    if (cancelMoveBtn) {
-        cancelMoveBtn.addEventListener('click', () => {
-            gameState.isMovingPop = false;
-            showNotification("انتقال لغو شد", "info");
-            updateActionTracker();
-        });
-    }
+    if (cancelMoveBtn) { cancelMoveBtn.addEventListener('click', () => { gameState.isMovingPop = false; showNotification("انتقال لغو شد", "info"); updateActionTracker(); }); }
     const cancelBuildBtn = document.getElementById('cancelBuildTrackBtn');
-    if (cancelBuildBtn) {
-        cancelBuildBtn.addEventListener('click', () => {
-            gameState.isPlacing = false;
-            gameState.placingSelectedHex = null;
-            showNotification("ساخت لغو شد", "info");
-            updateActionTracker();
-        });
-    }
+    if (cancelBuildBtn) { cancelBuildBtn.addEventListener('click', () => { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification("ساخت لغو شد", "info"); updateActionTracker(); }); }
 }
 
 function drawMap() {
@@ -283,13 +291,10 @@ function drawMap() {
         let ppData = gameState.POWERPLANT_HEXES.find(p => p.q === hex.q && p.r === hex.r);
         let councilData = gameState.COUNCIL_HEXES.find(c => c.q === hex.q && c.r === hex.r);
         let barracksData = gameState.BARRACKS_HEXES.find(b => b.q === hex.q && b.r === hex.r);
-        
         let isHouse = !!houseData, isPP = !!ppData, isCouncil = !!councilData, isBarracks = !!barracksData; 
-        
         let dist = hexDistance(hex, { q: 0, r: 0 }); 
         let isLocked = dist > 1; 
         let isUnlocked = gameState.unlockedHexes.some(u => u.q === hex.q && u.r === hex.r) || dist <= 1; 
-        
         if (isLocked && !isUnlocked) { drawHex(ctx, hex.x, hex.y, gameState.hexSize, '#15181c', '#2a2e33', 1.5); drawEmbeddedLock(ctx, hex.x, hex.y); } 
         else { drawHex(ctx, hex.x, hex.y, gameState.hexSize, '#ffffff', 'rgba(130, 160, 190, 0.4)', 1.5); } 
         
@@ -298,8 +303,7 @@ function drawMap() {
             let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + HOUSE_OFFSET_Y; 
             ctx.drawImage(houseImg, drawX, drawY, imgW, imgH); 
             const popText = `${houseData.pop}`; ctx.font = "bold 13px 'Vazirmatn', sans-serif"; 
-            const textWidth = ctx.measureText(popText).width; 
-            const pillW = textWidth + 30, pillH = 22, pillX = hex.x + 15, pillY = hex.y - 35; 
+            const textWidth = ctx.measureText(popText).width; const pillW = textWidth + 30, pillH = 22, pillX = hex.x + 15, pillY = hex.y - 35; 
             ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.beginPath(); 
             if (ctx.roundRect) { ctx.roundRect(pillX, pillY, pillW, pillH, 11); } else { ctx.rect(pillX, pillY, pillW, pillH); } 
             ctx.fillStyle = 'rgba(20, 20, 30, 0.9)'; ctx.fill(); ctx.shadowColor = 'transparent'; 
@@ -308,32 +312,26 @@ function drawMap() {
             ctx.font = "bold 13px 'Vazirmatn', sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(popText, pillX + pillW/2 + 6, pillY + pillH/2 + 1); 
             ctx.restore(); 
         } 
-        
         if (isPP && powerplantImg.complete && powerplantImg.naturalHeight !== 0) { 
             let imgW = hexW * POWERPLANT_SCALE, imgH = imgW * (powerplantImg.naturalHeight / powerplantImg.naturalWidth); 
             let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + POWERPLANT_OFFSET_Y; 
             ctx.drawImage(powerplantImg, drawX, drawY, imgW, imgH); 
         } 
-
         if (isCouncil && councilHallImg.complete && councilHallImg.naturalHeight !== 0) { 
             let imgW = hexW * COUNCIL_SCALE, imgH = imgW * (councilHallImg.naturalHeight / councilHallImg.naturalWidth); 
             let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + COUNCIL_OFFSET_Y; 
             ctx.drawImage(councilHallImg, drawX, drawY, imgW, imgH); 
         } 
-
         if (isBarracks && barracksImg.complete && barracksImg.naturalHeight !== 0) { 
             let imgW = hexW * BARRACKS_SCALE, imgH = imgW * (barracksImg.naturalHeight / barracksImg.naturalWidth); 
             let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + BARRACKS_OFFSET_Y; 
             ctx.drawImage(barracksImg, drawX, drawY, imgW, imgH); 
         } 
-
         let site = gameState.constructionSites.find(s => s.q === hex.q && s.r === hex.r); 
         if (site) { 
-            let timeLeft = Math.ceil((site.endTime - Date.now()) / 1000); 
-            let progress = 1 - ((site.endTime - Date.now()) / 30000); 
+            let timeLeft = Math.ceil((site.endTime - Date.now()) / 1000); let progress = 1 - ((site.endTime - Date.now()) / 30000); 
             ctx.beginPath(); ctx.arc(hex.x, hex.y, 20, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fill(); 
-            ctx.beginPath(); ctx.arc(hex.x, hex.y, 20, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress)); 
-            ctx.lineWidth = 4; ctx.strokeStyle = '#f4d03f'; ctx.stroke(); 
+            ctx.beginPath(); ctx.arc(hex.x, hex.y, 20, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress)); ctx.lineWidth = 4; ctx.strokeStyle = '#f4d03f'; ctx.stroke(); 
             ctx.font = "bold 14px 'Vazirmatn', sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(timeLeft + 's', hex.x, hex.y); 
         } 
     });
@@ -342,12 +340,9 @@ function drawMap() {
         let imgToDraw = gameState.placingType === 'powerplant' ? powerplantImg : (gameState.placingType === 'barracks' ? barracksImg : houseImg); 
         let currentScale = gameState.placingType === 'powerplant' ? POWERPLANT_SCALE : (gameState.placingType === 'barracks' ? BARRACKS_SCALE : HOUSE_SCALE); 
         let currentOffsetY = gameState.placingType === 'powerplant' ? POWERPLANT_OFFSET_Y : (gameState.placingType === 'barracks' ? BARRACKS_OFFSET_Y : HOUSE_OFFSET_Y);
-        
         let targetHex = null;
-        
-        if (gameState.placingSelectedHex) {
-            targetHex = gameState.placingSelectedHex;
-        } else {
+        if (gameState.placingSelectedHex) { targetHex = gameState.placingSelectedHex; } 
+        else {
             targetHex = getHoveredHex(gameState.mouseX, gameState.mouseY);
             if (targetHex) {
                 let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHex.q && h.r === targetHex.r);
@@ -362,20 +357,15 @@ function drawMap() {
                 if (!tooClose) { for (let c of gameState.COUNCIL_HEXES) { if (hexDistance(targetHex, c) <= 1) { tooClose = true; break; } } }
                 if (!tooClose) { for (let b of gameState.BARRACKS_HEXES) { if (hexDistance(targetHex, b) <= 1) { tooClose = true; break; } } }
                 if (!tooClose) { for (let c of gameState.constructionSites) { if (hexDistance(targetHex, { q: c.q, r: c.r }) <= 1) { tooClose = true; break; } } }
-                
-                if (tIsHouse || tIsPP || tIsCouncil || tIsBarracks || tIsOccupied || !tIsUnlocked || tooClose) {
-                    targetHex = null; 
-                }
+                if (tIsHouse || tIsPP || tIsCouncil || tIsBarracks || tIsOccupied || !tIsUnlocked || tooClose) { targetHex = null; }
             }
         }
-        
         if (targetHex && imgToDraw.complete && imgToDraw.naturalHeight !== 0) {
             let hex = gameState.hexes.find(h => h.q === targetHex.q && h.r === targetHex.r);
             if (hex) {
                 let imgW = hexW * currentScale, imgH = imgW * (imgToDraw.naturalHeight / imgToDraw.naturalWidth);
                 let drawX = hex.x - imgW / 2 + HOUSE_OFFSET_X, drawY = (hex.y - imgH * BASE_Y_RATIO) + currentOffsetY; 
                 ctx.globalAlpha = 0.6; ctx.drawImage(imgToDraw, drawX, drawY, imgW, imgH); ctx.globalAlpha = 1;
-                
                 if (gameState.placingSelectedHex) {
                     const btnRadius = 24; 
                     ctx.fillStyle = '#27ae60'; ctx.beginPath(); ctx.arc(hex.x + 35, hex.y - 25, btnRadius, 0, Math.PI * 2); ctx.fill();
@@ -395,71 +385,17 @@ function setupControls() {
     const canvas = document.getElementById('gameMap'); if(!canvas) return;
     window.addEventListener('keydown', e => { if (e.code === 'Escape') { const gs = document.getElementById('game-screen'); if (gs && gs.style.display === 'block') { const sm = document.getElementById('settingsModal'); if (sm && sm.style.display === 'flex') { sm.style.display = 'none'; const pm = document.getElementById('pauseModal'); if(pm) pm.style.display = 'flex'; } else { togglePauseMenu(); } } return; } if (gameState.rebindingKey) { e.preventDefault(); if (e.code !== 'Escape') { gameState.keyBindings[gameState.rebindingKey] = e.code; updateBindTexts(); showNotification(LANG[gameState.currentLang].keyBindSuccess, "success"); } gameState.rebindingKey = null; return; } if (gameState.isPaused) return; keys[e.code] = true; if (Object.values(gameState.keyBindings).includes(e.code)) e.preventDefault(); });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
-    
-    let mouseDragged = false;
-    let lastTouchTime = 0;
-    
-    canvas.addEventListener('mousedown', e => {
-        if (gameState.isPaused) return;
-        camera.dragging = true; camera.dragStartX = e.clientX; camera.dragStartY = e.clientY;
-        camera.startCamX = camera.x; camera.startCamY = camera.y; mouseDragged = false; canvas.style.cursor = 'grabbing';
-    });
-    window.addEventListener('mousemove', e => {
-        const rect = canvas.getBoundingClientRect(); gameState.mouseX = camera.x + ((e.clientX - rect.left) / camera.zoom); gameState.mouseY = camera.y + ((e.clientY - rect.top) / camera.zoom);
-        if (camera.dragging) {
-            camera.x = camera.startCamX - (e.clientX - camera.dragStartX) / camera.zoom; camera.y = camera.startCamY - (e.clientY - camera.dragStartY) / camera.zoom;
-            if (Math.abs(e.clientX - camera.dragStartX) > 5 || Math.abs(e.clientY - camera.dragStartY) > 5) { mouseDragged = true; }
-        }
-    });
+    let mouseDragged = false, lastTouchTime = 0;
+    canvas.addEventListener('mousedown', e => { if (gameState.isPaused) return; camera.dragging = true; camera.dragStartX = e.clientX; camera.dragStartY = e.clientY; camera.startCamX = camera.x; camera.startCamY = camera.y; mouseDragged = false; canvas.style.cursor = 'grabbing'; });
+    window.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); gameState.mouseX = camera.x + ((e.clientX - rect.left) / camera.zoom); gameState.mouseY = camera.y + ((e.clientY - rect.top) / camera.zoom); if (camera.dragging) { camera.x = camera.startCamX - (e.clientX - camera.dragStartX) / camera.zoom; camera.y = camera.startCamY - (e.clientY - camera.dragStartY) / camera.zoom; if (Math.abs(e.clientX - camera.dragStartX) > 5 || Math.abs(e.clientY - camera.dragStartY) > 5) { mouseDragged = true; } } });
     window.addEventListener('mouseup', () => { camera.dragging = false; canvas.style.cursor = 'grab'; });
-    canvas.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        if (gameState.isPlacing) { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification(LANG[gameState.currentLang].buildCancel, "info"); updateActionTracker(); }
-        if (gameState.isMovingPop) { gameState.isMovingPop = false; showNotification(LANG[gameState.currentLang].moveCancel, "info"); updateActionTracker(); }
-    });
+    canvas.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState.isPlacing) { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification(LANG[gameState.currentLang].buildCancel, "info"); updateActionTracker(); } if (gameState.isMovingPop) { gameState.isMovingPop = false; showNotification(LANG[gameState.currentLang].moveCancel, "info"); updateActionTracker(); } });
     canvas.addEventListener('wheel', e => { if(gameState.isPaused) return; e.preventDefault(); let newZoom = camera.zoom + (e.deltaY > 0 ? -0.1 : 0.1); const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect(); let minZoom = Math.max(rect.width / mW, rect.height / mH); camera.zoom = Math.max(minZoom, Math.min(2, newZoom)); }, { passive: false });
-    canvas.addEventListener('click', (e) => { 
-        if (Date.now() - lastTouchTime < 500) return; 
-        e.preventDefault(); 
-        if(!gameState.isPaused && !mouseDragged) handleMapClick(); 
-        mouseDragged = false; 
-    });
-    
+    canvas.addEventListener('click', (e) => { if (Date.now() - lastTouchTime < 500) return; e.preventDefault(); if(!gameState.isPaused && !mouseDragged) handleMapClick(); mouseDragged = false; });
     let pinchInitialDistance = 0, pinchInitialZoom = 1; function getDistance(touches) { const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
-    canvas.addEventListener('touchstart', e => {
-        if (gameState.isPaused) return; e.preventDefault();
-        lastTouchTime = Date.now();
-        if (e.touches.length === 1) {
-            camera.dragging = true; camera.dragStartX = e.touches[0].clientX; camera.dragStartY = e.touches[0].clientY; camera.startCamX = camera.x; camera.startCamY = camera.y;
-            mouseDragged = false;
-        } else if (e.touches.length === 2) {
-            pinchInitialDistance = getDistance(e.touches); pinchInitialZoom = camera.zoom; camera.dragging = false;
-        }
-    }, { passive: false });
-    canvas.addEventListener('touchmove', e => {
-        if (gameState.isPaused) return; e.preventDefault();
-        if (e.touches.length === 2) {
-            const currentDistance = getDistance(e.touches);
-            if (pinchInitialDistance > 0) { let zoomFactor = currentDistance / pinchInitialDistance; let newZoom = pinchInitialZoom * zoomFactor; const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect(); let minZoom = Math.max(rect.width / mW, rect.height / mH); camera.zoom = Math.max(minZoom, Math.min(2, newZoom)); }
-        } else if (camera.dragging && e.touches.length === 1) {
-            camera.x = camera.startCamX - (e.touches[0].clientX - camera.dragStartX) / camera.zoom; camera.y = camera.startCamY - (e.touches[0].clientY - camera.dragStartY) / camera.zoom;
-            if (Math.abs(e.touches[0].clientX - camera.dragStartX) > 5 || Math.abs(e.touches[0].clientY - camera.dragStartY) > 5) {
-                mouseDragged = true;
-            }
-        }
-    }, { passive: false });
-    canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        lastTouchTime = Date.now();
-        if (e.touches.length < 2) pinchInitialDistance = 0;
-        if (camera.dragging && e.changedTouches.length === 1 && e.touches.length === 0) {
-            if (!mouseDragged) {
-                const rect = canvas.getBoundingClientRect(); const tx = e.changedTouches[0].clientX - rect.left, ty = e.changedTouches[0].clientY - rect.top;
-                gameState.mouseX = camera.x + (tx / camera.zoom); gameState.mouseY = camera.y + (ty / camera.zoom); handleMapClick();
-            }
-        }
-        if (e.touches.length === 0) camera.dragging = false;
-    }, { passive: false });
+    canvas.addEventListener('touchstart', e => { if (gameState.isPaused) return; e.preventDefault(); lastTouchTime = Date.now(); if (e.touches.length === 1) { camera.dragging = true; camera.dragStartX = e.touches[0].clientX; camera.dragStartY = e.touches[0].clientY; camera.startCamX = camera.x; camera.startCamY = camera.y; mouseDragged = false; } else if (e.touches.length === 2) { pinchInitialDistance = getDistance(e.touches); pinchInitialZoom = camera.zoom; camera.dragging = false; } }, { passive: false });
+    canvas.addEventListener('touchmove', e => { if (gameState.isPaused) return; e.preventDefault(); if (e.touches.length === 2) { const currentDistance = getDistance(e.touches); if (pinchInitialDistance > 0) { let zoomFactor = currentDistance / pinchInitialDistance; let newZoom = pinchInitialZoom * zoomFactor; const mW = 3000, mH = 3000, rect = canvas.getBoundingClientRect(); let minZoom = Math.max(rect.width / mW, rect.height / mH); camera.zoom = Math.max(minZoom, Math.min(2, newZoom)); } } else if (camera.dragging && e.touches.length === 1) { camera.x = camera.startCamX - (e.touches[0].clientX - camera.dragStartX) / camera.zoom; camera.y = camera.startCamY - (e.touches[0].clientY - camera.dragStartY) / camera.zoom; if (Math.abs(e.touches[0].clientX - camera.dragStartX) > 5 || Math.abs(e.touches[0].clientY - camera.dragStartY) > 5) { mouseDragged = true; } } }, { passive: false });
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); lastTouchTime = Date.now(); if (e.touches.length < 2) pinchInitialDistance = 0; if (camera.dragging && e.changedTouches.length === 1 && e.touches.length === 0) { if (!mouseDragged) { const rect = canvas.getBoundingClientRect(); const tx = e.changedTouches[0].clientX - rect.left, ty = e.changedTouches[0].clientY - rect.top; gameState.mouseX = camera.x + (tx / camera.zoom); gameState.mouseY = camera.y + (ty / camera.zoom); handleMapClick(); } } if (e.touches.length === 0) camera.dragging = false; }, { passive: false });
 }
 
 function togglePauseMenu() { gameState.isPaused = !gameState.isPaused; const pm = document.getElementById('pauseModal'); if(pm) pm.style.display = gameState.isPaused ? 'flex' : 'none'; if (!gameState.isPaused) { const sm = document.getElementById('settingsModal'); if(sm) sm.style.display = 'none'; } }
@@ -496,25 +432,16 @@ function handleMapClick() {
         if (destHouse && sourceHouse && destHouse !== sourceHouse) { 
             if (destHouse.pop + gameState.moveAmount > 5) { showNotification("ظرفیت این خانه پر است! حداکثر ۵ نفر در یک خانه جا می‌گیرند.", "warning"); gameState.isMovingPop = false; updateActionTracker(); return; } 
             if (sourceHouse.receivedToday) { showAngryMoveModal(); sourceHouse.receivedToday = false; gameState.isMovingPop = false; updateActionTracker(); return; } 
-            
-            const sourceWasCrowded = sourceHouse.pop >= 4;
-            const destWillBeCrowded = destHouse.pop + gameState.moveAmount >= 4;
-            let satisfactionChange = 0;
-            let moveMessage = "جابه‌جایی انجام شد.";
+            const sourceWasCrowded = sourceHouse.pop >= 4; const destWillBeCrowded = destHouse.pop + gameState.moveAmount >= 4;
+            let satisfactionChange = 0; let moveMessage = "جابه‌جایی انجام شد.";
             if (sourceWasCrowded && !destWillBeCrowded) { satisfactionChange = 1; moveMessage = "شرایط زندگی بهتر شد! ۱ درصد رضایت بیشتر شد."; } 
             else if (!sourceWasCrowded && destWillBeCrowded) { satisfactionChange = -1; moveMessage = "خونه مقصد شلوغ‌تر شد! ۱ درصد رضایت کم شد."; }
             if (satisfactionChange > 0) { gameState.satisfaction = Math.min(100, gameState.satisfaction + satisfactionChange); showNotification(moveMessage, "success"); } 
             else if (satisfactionChange < 0) { gameState.satisfaction = Math.max(0, gameState.satisfaction + satisfactionChange); showNotification(moveMessage, "warning"); } 
             else { showNotification(moveMessage, "info"); }
-            
-            sourceHouse.pop -= gameState.moveAmount; destHouse.pop += gameState.moveAmount; destHouse.receivedToday = true; 
-            updateUI(); gameState.isMovingPop = false; updateActionTracker();
+            sourceHouse.pop -= gameState.moveAmount; destHouse.pop += gameState.moveAmount; destHouse.receivedToday = true; updateUI(); gameState.isMovingPop = false; updateActionTracker();
             if (gameState.tutorialStep === 16) { gameState.tutorialStep = 17; updateTutorialBox(); } 
-        } else {
-            if (!destHouse) showNotification("لطفاً روی یک خانه کلیک کنید!", "warning");
-            else if (destHouse === sourceHouse) showNotification("لطفاً روی خانه دیگری کلیک کنید!", "warning");
-        } 
-        return; 
+        } else { if (!destHouse) showNotification("لطفاً روی یک خانه کلیک کنید!", "warning"); else if (destHouse === sourceHouse) showNotification("لطفاً روی خانه دیگری کلیک کنید!", "warning"); } return; 
     }
     
     if (gameState.isPlacing) {
@@ -530,17 +457,14 @@ function handleMapClick() {
                 else if (distCancel <= touchRadius) { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification(LANG[gameState.currentLang].buildCancel, "info"); updateActionTracker(); return; }
             }
         }
-
         let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r);
         let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r);
         let tIsCouncil = gameState.COUNCIL_HEXES.some(c => c.q === target.q && c.r === target.r);
         let tIsBarracks = gameState.BARRACKS_HEXES.some(b => b.q === target.q && b.r === target.r);
         let tIsOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
         let tIsUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || hexDistance(target, { q: 0, r: 0 }) <= 1;
-
         if (tIsHouse || tIsPP || tIsCouncil || tIsBarracks || tIsOccupied) { showNotification(LANG[gameState.currentLang].occupied, "warning"); return; }
         if (!tIsUnlocked) { showNotification("یک مکان باز رو انتخاب کن!", "warning"); return; }
-
         let tooClose = false;
         for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) <= 1) { tooClose = true; break; } }
         if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(target, p) <= 1) { tooClose = true; break; } } }
@@ -548,7 +472,6 @@ function handleMapClick() {
         if (!tooClose) { for (let b of gameState.BARRACKS_HEXES) { if (hexDistance(target, b) <= 1) { tooClose = true; break; } } }
         if (!tooClose) { for (let c of gameState.constructionSites) { if (hexDistance(target, { q: c.q, r: c.r }) <= 1) { tooClose = true; break; } } }
         if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
-
         if (isMobile) { gameState.placingSelectedHex = target; return; } 
         else { if (executeBuild(target)) { gameState.isPlacing = false; gameState.placingSelectedHex = null; updateActionTracker(); } return; }
     }
@@ -571,20 +494,7 @@ function handleMapClick() {
             for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) === 1) { isAdjacentToHouse = true; break; } } 
             if (isAdjacentToHouse) { showNotification("برای نیروگاه، جایی رو انتخاب کن که کنارش خونه نباشه!", "warning"); return; } 
         } 
-        gameState.pendingUnlockTarget = target; 
-        const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; 
-    }
-    
-    if (gameState.tutorialStep > 0) { 
-        if (gameState.tutorialStep === 1 || gameState.tutorialStep === 9) showNotification("روی یکی از خانه‌های قفل‌شده کلیک کن!", "warning"); 
-        else if (gameState.tutorialStep === 2 || gameState.tutorialStep === 10) showNotification("حالا روی دکمه «ساخت و ساز» کلیک کن!", "warning"); 
-        else if (gameState.tutorialStep === 3 || gameState.tutorialStep === 11) showNotification("روی دکمه «ساخت» کلیک کن!", "warning"); 
-        else if (gameState.tutorialStep === 4 || gameState.tutorialStep === 12) showNotification("روی زمینی که قفلش رو باز کردی کلیک کن و تیک سبز رو بزن!", "warning"); 
-        else if (gameState.tutorialStep === 6) showNotification("روی منطقه «تخت جمشید» کلیک کن و اعزام رو بزن!", "warning"); 
-        else if (gameState.tutorialStep === 14) showNotification("روی خونه اصلی کلیک کن!", "warning"); 
-        else if (gameState.tutorialStep === 16) showNotification("روی خونه جدیدت کلیک کن!", "warning"); 
-        else showNotification("فعلاً طبق آموزش پیش برو!", "warning"); 
-        return; 
+        gameState.pendingUnlockTarget = target; const um = document.getElementById('unlockModal'); if(um) um.style.display = 'block'; return; 
     }
 }
 
@@ -593,8 +503,30 @@ function applyLang(lang) { gameState.currentLang = lang; const t = LANG[lang]; c
 
 function updateTutorialBox() { const txt = document.getElementById('tutorialText'); const btn = document.getElementById('tutorialBtn'); const pointer = document.getElementById('tutorialPointer'); const box = document.getElementById('tutorialBox'); if(!txt || !btn || !pointer || !box) return; if (gameState.tutorialStep === 0) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; return; } box.style.display = 'flex'; if (gameState.tutorialStep === -1) { txt.innerHTML = "سلام! من راهنمای تو در این سرمای سهم‌گین هستم. می‌خوای آموزش رو ببینی یا خودت بلدی؟<br><br><div style='text-align:center; margin-top:10px;'><button onclick='startTutorial(true)' style='padding: 8px 15px; background: #f4d03f; border:none; border-radius:4px; cursor:pointer; color:#000; font-weight:bold; font-family:Vazirmatn;'>آموزش ببین</button> <button onclick='startTutorial(false)' style='padding: 8px 15px; background: transparent; border:1px solid #aaa; border-radius:4px; cursor:pointer; color:#fff; font-family:Vazirmatn; margin-right:10px;'>بلدم، شروع کن</button></div>"; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 1) { txt.innerHTML = "برای شروع، روی یکی از خانه‌های قفل‌شده اطراف منطقه امن کلیک کن تا با ۱۰ سنگ قفلش رو باز کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 2) { txt.innerHTML = "آفرین! قفل باز شد. حالا روی دکمه «ساخت و ساز» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 3) { txt.innerHTML = "خوبه! حالا روی دکمه «ساخت» در بخش «ساخت خانه جدید» کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 4) { txt.innerHTML = "حالا روی اونجایی که قفلش رو باز کردی کلیک کن و بعد روی تیک سبز (✓) بزن تا خونه ساخته بشه و ۱۰ چوب از تو کم بشه."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 5) { txt.innerHTML = "خونه در حال ساخت است. حالا وقتشه بریم منابع بیشتری پیدا کنیم. روی دکمه «اکتشاف» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnExplore'); } else if (gameState.tutorialStep === 6) { txt.innerHTML = "اینجا سه منطقه هست. روی منطقه «تخت جمشید» کلیک کن و دکمه «اعزام» اون رو بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 7) { txt.innerHTML = "فعلاً در آموزش باید یک نفر رو انتخاب کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 8) { txt.innerHTML = "آفرین! یادت باشه هر روز به ازای هر نفر یک غذا و به ازای هر نیروگاه یک سوخت مصرف میشه! حالا برای گرم شدن، باید نیروگاه بسازی. روی دکمه متوجه شدم بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 9; updateTutorialBox(); }; } else if (gameState.tutorialStep === 9) { txt.innerHTML = "برای ساخت نیروگاه، باید یه زمین جدید باز کنی. روی یک مکان قفل‌شده کلیک کن که کنارش خونه نباشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 10) { txt.innerHTML = "آفرین! حالا دوباره روی دکمه «ساخت و ساز» کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 11) { txt.innerHTML = "این بار روی دکمه «ساخت» نیروگاه کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 12) { txt.innerHTML = "حالا روی زمینی که تازه باز کردی کلیک کن و روی تیک سبز (✓) بزن تا نیروگاه ساخته بشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 13) { txt.innerHTML = "نیروگاه در حال ساخت است. حالا باید جمعیت رو بین خونه‌هات پخش کنی. روی دکمه متوجه شدم بزن و بعد روی خونه اصلی کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 14; updateTutorialBox(); }; } else if (gameState.tutorialStep === 14) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 15) { txt.innerHTML = "همونطور که می‌بینی، نمی‌تونی همه آدم‌ها رو انتقال بدی. حداقل یک نفر (یعنی خودت!) باید تو خونه بمونه. پس ۱ تا ۴ نفر رو انتخاب کن و بعد روی دکمه «انتقال» بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 16) { txt.innerHTML = "حالا روی خونه جدیدت کلیک کن تا آدم‌ها اونجا مستقر بشن."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 17) { txt.innerHTML = "عالیه فقط یادت باشه آدم هات رو توی یک خونه نگه نداری کلافه میشن"; btn.style.display = 'inline-block'; btn.innerText = "پایان آموزش"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 0; box.style.display = 'none'; btn.style.display = 'none'; }; } }
 function movePointer(elementId) { const pointer = document.getElementById('tutorialPointer'); const el = document.getElementById(elementId); if (el && pointer) { const rect = el.getBoundingClientRect(); pointer.style.display = 'block'; pointer.style.left = (rect.left + rect.width / 2 - 30) + 'px'; pointer.style.top = (rect.top + rect.height / 2 - 30) + 'px'; } else if (pointer) { pointer.style.display = 'none'; } }
-function startExpedition(regionName, troops) { const isTutorial = gameState.tutorialStep === 7.5; if (!removeTroopsFromHouses(troops)) return; gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); updateUI(); showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } }
-function removeTroopsFromHouses(troops) { let toRemove = troops; let sortedHouses = [...gameState.HOUSE_HEXES].sort((a, b) => b.pop - a.pop); for (let house of sortedHouses) { if (toRemove <= 0) break; let isMainHouse = (house.q === 0 && house.r === 0); let available = isMainHouse ? Math.max(0, house.pop - 1) : house.pop; if (available > 0) { let take = Math.min(available, toRemove); house.pop -= take; toRemove -= take; } } return toRemove === 0; }
+
+function removeTroopsFromHouses(troops) {
+    let toRemove = troops;
+    let sortedHouses = [...gameState.HOUSE_HEXES].sort((a, b) => b.pop - a.pop);
+    for (let house of sortedHouses) {
+        if (toRemove <= 0) break;
+        let isMainHouse = (house.q === 0 && house.r === 0);
+        let available = isMainHouse ? Math.max(0, house.pop - 1) : house.pop;
+        if (available > 0) {
+            let take = Math.min(available, toRemove);
+            house.pop -= take;
+            toRemove -= take;
+        }
+    }
+    return toRemove === 0;
+}
+
+function startExpedition(regionName, troops) { 
+    const isTutorial = gameState.tutorialStep === 7.5; 
+    if (!removeTroopsFromHouses(troops)) return; 
+    gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); 
+    updateUI(); showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); 
+    if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } 
+}
 
 function updateExpeditions() { 
     const tracker = document.getElementById('expeditionTracker'); 
@@ -744,13 +676,10 @@ function initGame() {
     const panelExplore = document.createElement('div'); panelExplore.className = 'floating-panel'; panelExplore.id = 'panelExplore'; panelExplore.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 id="txtExploreTitle" style="font-size:1rem; color:#f4d03f;">اکتشاف</h3><button id="closeExplorePanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px; max-height: 400px; overflow-y: auto;"><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">کویر لوت</div><div class="region-risk" data-val="۰ تا ۱۰۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۱۰۰ درصد</div><div class="region-reward" data-val="۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت</div><button id="dispatchLut" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">آبشار لاتون</div><div class="region-risk" data-val="۰ تا ۷۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۷۰ درصد</div><div class="region-reward" data-val="۱۰ غذا، ۲۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ غذا، ۲۰ سنگ</div><button id="dispatchLaton" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">تخت جمشید</div><div class="region-risk" data-val="۰ تا ۴۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۴۰ درصد</div><div class="region-reward" data-val="۱۰ چوب، ۱۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ چوب، ۱۰ سنگ</div><button id="dispatchPersepolis" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div></div>`; if (gameScreen) gameScreen.appendChild(panelExplore);
     const panelRequests = document.createElement('div'); panelRequests.className = 'floating-panel'; panelRequests.id = 'panelRequests'; panelRequests.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 style="font-size:1rem; color:#f4d03f;">درخواست‌ها</h3><button id="closeRequestsPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" id="requestTrackerBody" style="padding:16px; max-height: 400px; overflow-y: auto;"><p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p></div>`; if (gameScreen) gameScreen.appendChild(panelRequests); const closeRequestsPanel = document.getElementById('closeRequestsPanel'); if (closeRequestsPanel) closeRequestsPanel.onclick = () => panelRequests.classList.remove('panel-open');
     
-    // پنل ساخت و ساز (همراه با اضافه شدن دکمه پادگان)
     const panelBuild = document.getElementById('panelBuild'); 
     if (panelBuild) panelBuild.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 id="txtBuildTitle" style="font-size:1rem; color:#f4d03f;">ساخت و ساز</h3><button id="closeBuildPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px;">
         <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div id="txtBuildHouse" class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت خانه جدید</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ چوب</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="txtBuildBtn" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><img src="house.png" style="width:80px; height:80px; object-fit:contain; border-radius:8px; background:#111; border:1px solid #333;"></div>
-        
         <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت نیروگاه</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectPowerPlant" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><img src="powerplant.png" style="width:80px; height:80px; object-fit:contain; border-radius:8px; background:#111; border:1px solid #333;"></div>
-
         <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت پادگان</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۵ چوب و ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectBarracks" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><img src="barracks.png" style="width:80px; height:80px; object-fit:contain; border-radius:8px; background:#111; border:1px solid #333;"></div>
     </div>`;
     
@@ -778,8 +707,6 @@ function initGame() {
     if (txtBuildBtn) txtBuildBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 3) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'house'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); if (gameState.tutorialStep === 3) { gameState.tutorialStep = 4; updateTutorialBox(); } };
     const selectPowerPlant = document.getElementById('selectPowerPlant');
     if (selectPowerPlant) selectPowerPlant.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 11) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'powerplant'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); if (gameState.tutorialStep === 11) { gameState.tutorialStep = 12; updateTutorialBox(); } };
-    
-    // رویداد کلیک برای دکمه ساخت پادگان
     const selectBarracks = document.getElementById('selectBarracks');
     if (selectBarracks) selectBarracks.onclick = () => { gameState.isPlacing = true; gameState.placingType = 'barracks'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); };
     
