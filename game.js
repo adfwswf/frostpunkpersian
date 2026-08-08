@@ -141,8 +141,62 @@ function continueGame() {
 }
 
 window.startTutorial = function(val) { gameState.tutorialStep = val ? 1 : 0; const box = document.getElementById('tutorialBox'); if (!val && box) box.style.display = 'none'; if (val) updateTutorialBox(); }
-function acceptWaitingMigrants(id) { let req = gameState.migrantRequests.find(r => r.id === id); if (req) { startPlacingMigrants(req.count); gameState.migrantRequests = gameState.migrantRequests.filter(r => r.id !== id); let tracker = document.getElementById('requestTrackerBody'); if (tracker) { let divToRemove = tracker.querySelector(`[data-req-id="req_${id}"]`); if (divToRemove) divToRemove.remove(); if (gameState.migrantRequests.length === 0 && !tracker.querySelector('.no-req-msg')) { tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>'; } } let panel = document.getElementById('panelRequests'); if(panel) panel.classList.remove('panel-open'); } }
+function acceptWaitingMigrants(id) { 
+    let req = gameState.migrantRequests.find(r => r.id === id); 
+    if (req) { 
+        autoPlaceMigrants(req.count); // توزیع خودکار پناهندگان
+        gameState.migrantRequests = gameState.migrantRequests.filter(r => r.id !== id); 
+        let tracker = document.getElementById('requestTrackerBody'); 
+        if (tracker) { 
+            let divToRemove = tracker.querySelector(`[data-req-id="req_${id}"]`); 
+            if (divToRemove) divToRemove.remove(); 
+            if (gameState.migrantRequests.length === 0 && !tracker.querySelector('.no-req-msg')) { 
+                tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>'; 
+            } 
+        } 
+        let panel = document.getElementById('panelRequests'); 
+        if(panel) panel.classList.remove('panel-open'); 
+    } 
+}
 window.acceptWaitingMigrants = acceptWaitingMigrants;
+
+// تابع جدید: توزیع خودکار پناهندگان در خانه‌های خالی‌تر
+function autoPlaceMigrants(count) {
+    let causedOverpopulation = false;
+    let placed = 0;
+    
+    for (let i = 0; i < count; i++) {
+        let targetHouse = null;
+        let minPop = 6; // ظرفیت هر خانه 5 نفر است، پس 6 یعنی خالی تر از همه
+        
+        for (let h of gameState.HOUSE_HEXES) {
+            if (h.pop < 5 && h.pop < minPop) {
+                minPop = h.pop;
+                targetHouse = h;
+            }
+        }
+        
+        if (targetHouse) {
+            targetHouse.pop++;
+            placed++;
+            if (targetHouse.pop > 3) causedOverpopulation = true;
+        } else {
+            showNotification(`${count - placed} پناهنده به دلیل کمبود جا پذیرفته نشدند!`, "warning");
+            break;
+        }
+    }
+    
+    if (placed > 0) {
+        if (causedOverpopulation) {
+            gameState.satisfaction = Math.max(0, gameState.satisfaction - 1);
+            showNotification("خونه‌های پذیرنده شلوغ شد! ۱ درصد رضایت کم شد.", "warning");
+        } else {
+            gameState.satisfaction = Math.min(100, gameState.satisfaction + 1);
+            showNotification("میزبانی عالی بود! ۱ درصد رضایت بیشتر شد.", "success");
+        }
+        updateUI();
+    }
+}
 
 function createEmbers() {
     const c = document.getElementById('heroCanvas'); if (!c) return; const ctx = c.getContext('2d'); let W = c.width = window.innerWidth, H = c.height = window.innerHeight;
@@ -247,6 +301,7 @@ function drawMap() {
                 let tooClose = false;
                 for (let h of gameState.HOUSE_HEXES) { if (hexDistance(targetHex, h) <= 1) { tooClose = true; break; } }
                 if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(targetHex, p) <= 1) { tooClose = true; break; } } }
+                if (!tooClose) { for (let c of gameState.constructionSites) { if (hexDistance(targetHex, { q: c.q, r: c.r }) <= 1) { tooClose = true; break; } } }
                 
                 if (tIsHouse || tIsPP || tIsOccupied || !tIsUnlocked || tooClose) {
                     targetHex = null; 
@@ -350,7 +405,7 @@ function setupControls() {
 function togglePauseMenu() { gameState.isPaused = !gameState.isPaused; const pm = document.getElementById('pauseModal'); if(pm) pm.style.display = gameState.isPaused ? 'flex' : 'none'; if (!gameState.isPaused) { const sm = document.getElementById('settingsModal'); if(sm) sm.style.display = 'none'; } }
 function updateBindTexts() { const elUp = document.getElementById('bindUp'); if(elUp) elUp.innerText = gameState.keyBindings.up.replace('Key', ''); const elDown = document.getElementById('bindDown'); if(elDown) elUp.innerText = gameState.keyBindings.down.replace('Key', ''); const elLeft = document.getElementById('bindLeft'); if(elLeft) elLeft.innerText = gameState.keyBindings.left.replace('Key', ''); const elRight = document.getElementById('bindRight'); if(elRight) elRight.innerText = gameState.keyBindings.right.replace('Key', ''); }
 function calculateCanFit(count) { let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); let totalCapacity = gameState.HOUSE_HEXES.length * 3; return (totalCapacity - totalPop) >= count; }
-function startPlacingMigrants(count) { gameState.isPlacingMigrants = true; gameState.migrantsToPlace = count; gameState.migrantTargetHouses = []; showNotification(`${count} مهاجر وارد شد. روی خونه‌ها کلیک کن تا مستقر شوند.`, "info"); }
+// تابع startPlacingMigrants حذف شد و با autoPlaceMigrants جایگزین شد
 
 function executeBuild(target) {
     if (gameState.placingType === 'house') {
@@ -370,37 +425,7 @@ function executeBuild(target) {
 function handleMapClick() {
     const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
     
-    if (gameState.isPlacingMigrants) { 
-        let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r);
-        if (destHouse) {
-            if (parseInt(destHouse.pop) < 5) {
-                destHouse.pop++; 
-                if (!gameState.migrantTargetHouses.includes(destHouse)) gameState.migrantTargetHouses.push(destHouse); 
-                gameState.migrantsToPlace--; 
-                updateUI(); 
-                if (gameState.migrantsToPlace === 0) { 
-                    gameState.isPlacingMigrants = false; 
-                    let causedOverpopulation = false; 
-                    for (let h of gameState.migrantTargetHouses) { 
-                        if (h.pop > 3) { causedOverpopulation = true; break; } 
-                    } 
-                    if (causedOverpopulation) { 
-                        gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); 
-                        showNotification("خونه‌های پذیرنده شلوغ شد! ۱ درصد رضایت کم شد.", "warning"); 
-                    } else { 
-                        gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); 
-                        showNotification("میزبانی عالی بود! ۱ درصد رضایت بیشتر شد.", "success"); 
-                    } 
-                    updateUI(); 
-                } 
-            } else {
-                showNotification("ظرفیت این خانه (۵ نفر) پر است!", "warning");
-            }
-        } else {
-            showNotification("لطفاً روی یکی از خانه‌ها کلیک کنید!", "warning");
-        }
-        return; 
-    }
+    // بخش مربوط به isPlacingMigrants حذف شد چون حالا خودکار است
     
     if (gameState.isMovingPop) { 
         let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); 
@@ -466,7 +491,6 @@ function handleMapClick() {
     if (gameState.isPlacing) {
         const isMobile = window.innerWidth <= 768;
 
-        // 1. Check if user clicked the confirm/cancel buttons (Mobile Only)
         if (isMobile && gameState.placingSelectedHex) {
             let selectedHexObj = gameState.hexes.find(h => h.q === gameState.placingSelectedHex.q && h.r === gameState.placingSelectedHex.r);
             if (selectedHexObj) {
@@ -492,7 +516,6 @@ function handleMapClick() {
             }
         }
 
-        // 2. Check if the newly clicked hex is valid for placing
         let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r);
         let tIsPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r);
         let tIsOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
@@ -504,15 +527,14 @@ function handleMapClick() {
         let tooClose = false;
         for (let h of gameState.HOUSE_HEXES) { if (hexDistance(target, h) <= 1) { tooClose = true; break; } }
         if (!tooClose) { for (let p of gameState.POWERPLANT_HEXES) { if (hexDistance(target, p) <= 1) { tooClose = true; break; } } }
+        // بررسی سایت‌های در حال ساخت برای جلوگیری از چسبیدن به ساختمانی که تازه در حال ساخته شدن است
+        if (!tooClose) { for (let c of gameState.constructionSites) { if (hexDistance(target, { q: c.q, r: c.r }) <= 1) { tooClose = true; break; } } }
         if (tooClose) { showNotification(LANG[gameState.currentLang].tooClose, "warning"); return; }
 
-        // 3. Execute Action
         if (isMobile) {
-            // On mobile, just place the ghost here. No validation yet!
             gameState.placingSelectedHex = target;
             return;
         } else {
-            // Desktop validation and immediate build
             if (executeBuild(target)) {
                 gameState.isPlacing = false;
                 gameState.placingSelectedHex = null;
@@ -562,7 +584,36 @@ function applyLang(lang) { gameState.currentLang = lang; const t = LANG[lang]; c
 
 function updateTutorialBox() { const txt = document.getElementById('tutorialText'); const btn = document.getElementById('tutorialBtn'); const pointer = document.getElementById('tutorialPointer'); const box = document.getElementById('tutorialBox'); if(!txt || !btn || !pointer || !box) return; if (gameState.tutorialStep === 0) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; return; } box.style.display = 'flex'; if (gameState.tutorialStep === -1) { txt.innerHTML = "سلام! من راهنمای تو در این سرمای سهم‌گین هستم. می‌خوای آموزش رو ببینی یا خودت بلدی؟<br><br><div style='text-align:center; margin-top:10px;'><button onclick='startTutorial(true)' style='padding: 8px 15px; background: #f4d03f; border:none; border-radius:4px; cursor:pointer; color:#000; font-weight:bold; font-family:Vazirmatn;'>آموزش ببین</button> <button onclick='startTutorial(false)' style='padding: 8px 15px; background: transparent; border:1px solid #aaa; border-radius:4px; cursor:pointer; color:#fff; font-family:Vazirmatn; margin-right:10px;'>بلدم، شروع کن</button></div>"; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 1) { txt.innerHTML = "برای شروع، روی یکی از خانه‌های قفل‌شده اطراف منطقه امن کلیک کن تا با ۱۰ سنگ قفلش رو باز کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 2) { txt.innerHTML = "آفرین! قفل باز شد. حالا روی دکمه «ساخت و ساز» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 3) { txt.innerHTML = "خوبه! حالا روی دکمه «ساخت» در بخش «ساخت خانه جدید» کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 4) { txt.innerHTML = "حالا روی اونجایی که قفلش رو باز کردی کلیک کن و بعد روی تیک سبز (✓) بزن تا خونه ساخته بشه و ۱۰ چوب از تو کم بشه."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 5) { txt.innerHTML = "خونه در حال ساخت است. حالا وقتشه بریم منابع بیشتری پیدا کنیم. روی دکمه «اکتشاف» در پایین صفحه کلیک کن."; btn.style.display = 'none'; movePointer('btnExplore'); } else if (gameState.tutorialStep === 6) { txt.innerHTML = "اینجا سه منطقه هست. روی منطقه «تخت جمشید» کلیک کن و دکمه «اعزام» اون رو بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 7) { txt.innerHTML = "فعلاً در آموزش باید یک نفر رو انتخاب کنی."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 8) { txt.innerHTML = "آفرین! یادت باشه هر روز به ازای هر نفر یک غذا و به ازای هر نیروگاه یک سوخت مصرف میشه! حالا برای گرم شدن، باید نیروگاه بسازی. روی دکمه متوجه شدم بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 9; updateTutorialBox(); }; } else if (gameState.tutorialStep === 9) { txt.innerHTML = "برای ساخت نیروگاه، باید یه زمین جدید باز کنی. روی یک مکان قفل‌شده کلیک کن که کنارش خونه نباشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 10) { txt.innerHTML = "آفرین! حالا دوباره روی دکمه «ساخت و ساز» کلیک کن."; btn.style.display = 'none'; movePointer('btnBuild'); } else if (gameState.tutorialStep === 11) { txt.innerHTML = "این بار روی دکمه «ساخت» نیروگاه کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 12) { txt.innerHTML = "حالا روی زمینی که تازه باز کردی کلیک کن و روی تیک سبز (✓) بزن تا نیروگاه ساخته بشه (۱۰ سنگ کم میشه)."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 13) { txt.innerHTML = "نیروگاه در حال ساخت است. حالا باید جمعیت رو بین خونه‌هات پخش کنی. روی دکمه متوجه شدم بزن و بعد روی خونه اصلی کلیک کن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 14; updateTutorialBox(); }; } else if (gameState.tutorialStep === 14) { box.style.display = 'none'; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 15) { txt.innerHTML = "همونطور که می‌بینی، نمی‌تونی همه آدم‌ها رو انتقال بدی. حداقل یک نفر (یعنی خودت!) باید تو خونه بمونه. پس ۱ تا ۴ نفر رو انتخاب کن و بعد روی دکمه «انتقال» بزن."; btn.style.display = 'inline-block'; btn.innerText = "متوجه شدم"; pointer.style.display = 'none'; btn.onclick = () => { box.style.display = 'none'; }; } else if (gameState.tutorialStep === 16) { txt.innerHTML = "حالا روی خونه جدیدت کلیک کن تا آدم‌ها اونجا مستقر بشن."; btn.style.display = 'none'; pointer.style.display = 'none'; } else if (gameState.tutorialStep === 17) { txt.innerHTML = "عالیه فقط یادت باشه آدم هات رو توی یک خونه نگه نداری کلافه میشن"; btn.style.display = 'inline-block'; btn.innerText = "پایان آموزش"; pointer.style.display = 'none'; btn.onclick = () => { gameState.tutorialStep = 0; box.style.display = 'none'; btn.style.display = 'none'; }; } }
 function movePointer(elementId) { const pointer = document.getElementById('tutorialPointer'); const el = document.getElementById(elementId); if (el && pointer) { const rect = el.getBoundingClientRect(); pointer.style.display = 'block'; pointer.style.left = (rect.left + rect.width / 2 - 30) + 'px'; pointer.style.top = (rect.top + rect.height / 2 - 30) + 'px'; } else if (pointer) { pointer.style.display = 'none'; } }
-function startExpedition(regionName, troops) { const isTutorial = gameState.tutorialStep === 7.5; gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); if (mainHouse) mainHouse.pop = Math.max(0, mainHouse.pop - troops); updateUI(); showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } }
+
+// تابع جدید: کم کردن خودکار نیروهای اعزامی از خانه‌های پرجمعیت‌تر
+function removeTroopsFromHouses(troops) {
+    let toRemove = troops;
+    // مرتب سازی خانه‌ها بر اساس بیشترین جمعیت
+    let sortedHouses = [...gameState.HOUSE_HEXES].sort((a, b) => b.pop - a.pop);
+    
+    for (let house of sortedHouses) {
+        if (toRemove <= 0) break;
+        let isMainHouse = (house.q === 0 && house.r === 0);
+        let available = isMainHouse ? Math.max(0, house.pop - 1) : house.pop;
+        if (available > 0) {
+            let take = Math.min(available, toRemove);
+            house.pop -= take;
+            toRemove -= take;
+        }
+    }
+    return toRemove === 0;
+}
+
+function startExpedition(regionName, troops) { 
+    const isTutorial = gameState.tutorialStep === 7.5; 
+    
+    if (!removeTroopsFromHouses(troops)) return; // اگر آدم کافی نبود، اعزام لغو می‌شود
+    
+    gameState.expeditions.push({ id: Date.now(), region: regionName, troops: troops, startTime: Date.now(), endTime: Date.now() + (isTutorial ? 10000 : 60000), isTutorial: isTutorial }); 
+    updateUI(); 
+    showNotification(`${troops} ${LANG[gameState.currentLang].dispatchNotif} ${regionName} اعزام شدند!`, "success"); 
+    if (isTutorial) { gameState.tutorialStep = 8; updateTutorialBox(); } 
+}
 
 function updateExpeditions() { 
     const tracker = document.getElementById('expeditionTracker'); 
@@ -589,8 +640,12 @@ function updateExpeditions() {
         const res = calculateExpeditionResult(exp); 
         showExpeditionResult(exp, res); 
         let survivors = exp.troops - res.casualties; 
-        if (survivors > 0) { let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); if (mainHouse) mainHouse.pop += survivors; } 
-        gameState.wood += res.wood; gameState.stone += res.stone; gameState.food += res.food; gameState.fuel += res.fuel; updateUI(); 
+        if (survivors > 0) { 
+            let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); 
+            if (mainHouse) mainHouse.pop += survivors; 
+        } 
+        gameState.wood += res.wood; gameState.stone += res.stone; gameState.food += res.food; gameState.fuel += res.fuel; 
+        updateUI(); 
     }); 
     if (completed.length > 0) { const completedIds = completed.map(c => c.id); gameState.expeditions = gameState.expeditions.filter(e => !completedIds.includes(e.id)); } 
 }
@@ -598,7 +653,7 @@ function updateExpeditions() {
 function updateRequests() { 
     const tracker = document.getElementById('requestTrackerBody'); 
     if (!tracker) return; 
-    if (gameState.isPlacingMigrants) return; 
+    if (gameState.isPlacingMigrants) return; // این بخش برای امنیت کد باقی ماند اما دیگه استفاده نمی‌شود
     let expiredIds = []; 
     if (gameState.migrantRequests.length === 0) { 
         if (!tracker.querySelector('.no-req-msg')) tracker.innerHTML = '<p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p>'; 
@@ -675,7 +730,7 @@ function updateRequests() {
 
 function calculateExpeditionResult(exp) { if (exp.isTutorial) return { wood: 10, stone: 10, food: 0, fuel: 0, casualties: 0 }; const regionData = { 'کویر لوت': { pcts: [100, 80, 75, 70, 50, 20, 0], res: { wood: 30, stone: 30, food: 20, fuel: 5 } }, 'آبشار لاتون': { pcts: [70, 60, 50, 40, 20, 0], res: { wood: 0, stone: 20, food: 10, fuel: 0 } }, 'تخت جمشید': { pcts: [40, 30, 20, 15, 10, 0], res: { wood: 10, stone: 10, food: 0, fuel: 0 } } }; const r = regionData[exp.region]; if (!r) return { casualties: exp.troops, wood: 0, stone: 0, food: 0, fuel: 0 }; const pct = r.pcts[Math.floor(Math.random() * r.pcts.length)]; const exact = (pct / 100) * exp.troops; let casualties = Math.floor(exact); if (Math.random() < (exact - casualties)) casualties++; casualties = Math.min(casualties, exp.troops); const survivors = exp.troops - casualties; return { wood: survivors * r.res.wood, stone: survivors * r.res.stone, food: survivors * r.res.food, fuel: survivors * r.res.fuel, casualties }; }
 function showExpeditionResult(exp, res) { const modal = document.getElementById('expeditionResultModal'); const txt = document.getElementById('resultText'); if(!modal || !txt) return; const t = LANG[gameState.currentLang]; let html = `<div style="margin-bottom:10px;"><strong style="color:#f4d03f;">${t.resultRegion}</strong> ${exp.region}</div>`; html += `<div style="margin-bottom:10px;"><strong style="color:#e74c3c;">${t.resultCasualties}</strong> ${res.casualties} ${gameState.currentLang === 'en' ? 'troops' : 'نفر'}</div>`; html += `<div style="margin-bottom:10px; border-top:1px solid #333; padding-top:10px;"><strong style="color:#f4d03f;">${t.resultRes}</strong><br>`; let foundRes = false, resList = ''; if (res.wood > 0) { resList += `🪵 ${t.wood}: ${res.wood}<br>`; foundRes = true; } if (res.stone > 0) { resList += `🪨 ${t.stone}: ${res.stone}<br>`; foundRes = true; } if (res.food > 0) { resList += `🍖 ${t.food}: ${res.food}<br>`; foundRes = true; } if (res.fuel > 0) { resList += `🔥 ${t.fuel}: ${res.fuel}<br>`; foundRes = true; } if (!foundRes) { html += `${t.resultNone}<br>`; } else { html += resList; } html += `</div>`; txt.innerHTML = html; modal.style.display = 'block'; }
-function showMigrantModal(count) { const modal = document.getElementById('migrantModal'); const txt = document.getElementById('migrantText'); if(!modal || !txt) return; txt.innerText = `${count} نفر می‌خواهند به منطقه امن شما بپیوندند. آیا اجازه می‌دهید؟`; modal.style.display = 'flex'; const migrantReject = document.getElementById('migrantReject'); if(migrantReject) migrantReject.onclick = () => { modal.style.display = 'none'; let canFit = calculateCanFit(count); if (canFit) { gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، کمک نکردید. ۱ درصد رضایت کم شد.", "warning"); } else { gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info"); } updateUI(); }; const migrantWait = document.getElementById('migrantWait'); if(migrantWait) migrantWait.onclick = () => { modal.style.display = 'none'; gameState.migrantRequests.push({ id: Date.now(), count: count, endTime: Date.now() + 180000 }); showNotification("آدم‌ها در انتظار نگه داشته شدند. به بخش درخواست‌ها مراجعه کنید.", "info"); }; const migrantAccept = document.getElementById('migrantAccept'); if(migrantAccept) migrantAccept.onclick = () => { modal.style.display = 'none'; startPlacingMigrants(count); }; }
+function showMigrantModal(count) { const modal = document.getElementById('migrantModal'); const txt = document.getElementById('migrantText'); if(!modal || !txt) return; txt.innerText = `${count} نفر می‌خواهند به منطقه امن شما بپیوندند. آیا اجازه می‌دهید؟`; modal.style.display = 'flex'; const migrantReject = document.getElementById('migrantReject'); if(migrantReject) migrantReject.onclick = () => { modal.style.display = 'none'; let canFit = calculateCanFit(count); if (canFit) { gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); showNotification("شهروندان ناراحت شدند که با وجود داشتن جا، کمک نکردید. ۱ درصد رضایت کم شد.", "warning"); } else { gameState.satisfaction = Math.min(100, gameState.satisfaction + 1); showNotification("شهروندان خوشحال شدند که منابع تقسیم نشد و بقا تضمین شد. ۱ درصد رضایت بیشتر شد.", "info"); } updateUI(); }; const migrantWait = document.getElementById('migrantWait'); if(migrantWait) migrantWait.onclick = () => { modal.style.display = 'none'; gameState.migrantRequests.push({ id: Date.now(), count: count, endTime: Date.now() + 180000 }); showNotification("آدم‌ها در انتظار نگه داشته شدند. به بخش درخواست‌ها مراجعه کنید.", "info"); }; const migrantAccept = document.getElementById('migrantAccept'); if(migrantAccept) migrantAccept.onclick = () => { modal.style.display = 'none'; autoPlaceMigrants(count); // توزیع خودکار پناهندگان }; }
 function nextDay() { if (gameState.gameOver || gameState.isPaused) return; gameState.day++; let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); let starvedCount = 0; if (gameState.food < totalPop) { starvedCount = totalPop - gameState.food; gameState.food = 0; let toKill = starvedCount; while (toKill > 0) { let eligibleHouses = gameState.HOUSE_HEXES.filter(h => h.pop > 0); if (eligibleHouses.length === 0) break; let house = eligibleHouses[Math.floor(Math.random() * eligibleHouses.length)]; house.pop--; toKill--; } let remainingPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); if (remainingPop <= 0) { showGameOver(); return; } let hopeReduction = Math.ceil(starvedCount / 2); gameState.hope = Math.max(0, gameState.hope - hopeReduction); let modal = document.getElementById('starvationModal'); if (modal) { document.getElementById('starvationText').innerText = `به دلیل کمبود غذا، ${starvedCount} نفر از شهروندان جان باختند. لطفاً منابع غذایی رو مدیریت کن!`; modal.style.display = 'flex'; } } else { gameState.food -= totalPop; } gameState.fuel = Math.max(0, gameState.fuel - gameState.POWERPLANT_HEXES.length); gameState.HOUSE_HEXES.forEach(h => h.receivedToday = false); let hasOvercrowded = gameState.HOUSE_HEXES.some(h => h.pop === 5); let hasSpace = gameState.HOUSE_HEXES.some(h => h.pop < 3); if (hasOvercrowded && hasSpace && gameState.HOUSE_HEXES.length > 1) { const cm = document.getElementById('complaintModal'); if(cm) cm.style.display = 'flex'; } updateUI(); if (Math.random() < 0.33) { let numMigrants = Math.floor(Math.random() * gameState.day) + 1; showMigrantModal(numMigrants); } }
 function startGameLoop() {}
 function updateUI() { let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); gameState.population = totalPop; let ppCount = gameState.POWERPLANT_HEXES.length; let heatCapacity = ppCount * 10; if (totalPop > 0) gameState.heat = Math.min(100, Math.round((heatCapacity / totalPop) * 100)); else gameState.heat = 0; const el = id => document.getElementById(id); const updateBar = (id, value, max) => { const valEl = el(id); if (valEl) { const barEl = valEl.parentElement.querySelector('.resource-bar'); if (barEl) { let percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0; barEl.style.width = percentage + '%'; } if (id === 'heat') { const parent = valEl.parentElement; if (parent && (!parent.previousElementSibling || !parent.previousElementSibling.classList.contains('mobile-line-break'))) { const lineBreak = document.createElement('div'); lineBreak.className = 'mobile-line-break'; parent.parentNode.insertBefore(lineBreak, parent); } } } }; if(el('day')) el('day').textContent = gameState.day; if(el('population')) el('population').textContent = gameState.population; if(el('wood')) el('wood').textContent = gameState.wood; if(el('stone')) el('stone').textContent = gameState.stone; if(el('food')) el('food').textContent = Math.floor(gameState.food); if(el('fuel')) el('fuel').textContent = Math.floor(gameState.fuel); if(el('heat')) el('heat').textContent = gameState.heat + '%'; if(el('hope')) el('hope').textContent = gameState.hope + '%'; if(el('satisfaction')) el('satisfaction').textContent = gameState.satisfaction + '%'; updateBar('population', gameState.population, 20); updateBar('wood', gameState.wood, 50); updateBar('stone', gameState.stone, 50); updateBar('food', gameState.food, 50); updateBar('fuel', gameState.fuel, 50); updateBar('heat', gameState.heat, 100); updateBar('hope', gameState.hope, 100); updateBar('satisfaction', gameState.satisfaction, 100); }
@@ -800,7 +855,36 @@ function initGame() {
     if (exploreBtn) exploreBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelExplore'); if (panelExplore) panelExplore.classList.add('panel-open'); if (gameState.tutorialStep === 5) { gameState.tutorialStep = 6; updateTutorialBox(); } };
     const closeExplorePanel = document.getElementById('closeExplorePanel'); if (closeExplorePanel) closeExplorePanel.onclick = () => { if (panelExplore) panelExplore.classList.remove('panel-open'); };
     if (requestsBtn) requestsBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelRequests'); if (panelRequests) panelRequests.classList.add('panel-open'); };
-    const openDispatchModal = (regionName) => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 6) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } if (gameState.tutorialStep === 6 && regionName !== 'تخت جمشید') { showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; } if (gameState.population <= 1) { showNotification("شهروند کافی برای اعزام ندارید! (حداقل ۲ نفر در کل بازی لازم است)", "warning"); if (panelExplore) panelExplore.classList.remove('panel-open'); return; } const maxTroops = Math.max(1, gameState.population - 1); if (gameState.tutorialStep === 6) { gameState.tutorialStep = 7; updateTutorialBox(); } gameState.selectedRegion = regionName; const mrn = document.getElementById('modalRegionName'); if(mrn) mrn.innerText = regionName; const btnsDiv = document.getElementById('dispatchTroopsBtns'); if(btnsDiv) btnsDiv.innerHTML = ''; for(let i=1; i<=maxTroops; i++) { let b = document.createElement('button'); b.innerText = i; b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: 5px;"; b.onmouseover = () => b.style.background = '#34495e'; b.onmouseout = () => b.style.background = '#2c3e50'; b.onclick = () => { if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; startExpedition(gameState.selectedRegion, i); dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; if (panelExplore) panelExplore.classList.remove('panel-open'); }; if(btnsDiv) btnsDiv.appendChild(b); } dispatchTroopsModal.style.display = 'block'; setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); };
+    const openDispatchModal = (regionName) => { 
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 6) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
+        if (gameState.tutorialStep === 6 && regionName !== 'تخت جمشید') { showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; } 
+        if (gameState.population <= 1) { showNotification("شهروند کافی برای اعزام ندارید! (حداقل ۲ نفر در کل بازی لازم است)", "warning"); if (panelExplore) panelExplore.classList.remove('panel-open'); return; } 
+        const maxTroops = Math.max(1, gameState.population - 1); 
+        if (gameState.tutorialStep === 6) { gameState.tutorialStep = 7; updateTutorialBox(); } 
+        gameState.selectedRegion = regionName; 
+        const mrn = document.getElementById('modalRegionName'); 
+        if(mrn) mrn.innerText = regionName; 
+        const btnsDiv = document.getElementById('dispatchTroopsBtns'); 
+        if(btnsDiv) btnsDiv.innerHTML = ''; 
+        for(let i=1; i<=maxTroops; i++) { 
+            let b = document.createElement('button'); 
+            b.innerText = i; 
+            b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: 5px;"; 
+            b.onmouseover = () => b.style.background = '#34495e'; 
+            b.onmouseout = () => b.style.background = '#2c3e50'; 
+            b.onclick = () => { 
+                if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } 
+                if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; 
+                startExpedition(gameState.selectedRegion, i); 
+                dispatchTroopsModal.style.display = 'none'; 
+                dispatchTroopsModal.style.opacity = 0; 
+                if (panelExplore) panelExplore.classList.remove('panel-open'); 
+            }; 
+            if(btnsDiv) btnsDiv.appendChild(b); 
+        } 
+        dispatchTroopsModal.style.display = 'block'; 
+        setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); 
+    };
     const dispatchLut = document.getElementById('dispatchLut'); if (dispatchLut) dispatchLut.onclick = () => openDispatchModal('کویر لوت');
     const dispatchLaton = document.getElementById('dispatchLaton'); if (dispatchLaton) dispatchLaton.onclick = () => openDispatchModal('آبشار لاتون');
     const dispatchPersepolis = document.getElementById('dispatchPersepolis'); if (dispatchPersepolis) dispatchPersepolis.onclick = () => openDispatchModal('تخت جمشید');
