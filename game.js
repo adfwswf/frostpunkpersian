@@ -3,13 +3,13 @@ const PERSPECTIVE_Y = 0.6;
 const HOUSE_SCALE = 1.1;          
 const POWERPLANT_SCALE = 1.2;     
 const BARRACKS_SCALE = 1.1;       
-const COUNCIL_SCALE = 1.1;        // هم‌اندازه خانه شد
+const COUNCIL_SCALE = 1.1;            // اندازه مجلس
 const BASE_Y_RATIO = 0.85;        
 const HOUSE_OFFSET_X = 0;         
 const HOUSE_OFFSET_Y = 25;        
 const POWERPLANT_OFFSET_Y = 10;   
 const BARRACKS_OFFSET_Y = 25;     
-const COUNCIL_OFFSET_Y = 30;      // نزدیک‌تر به لبه پایین شد
+const COUNCIL_OFFSET_Y = 30;          // با این عدد میتونی مجلس رو بالا و پایین کنی
 const MUSIC_START_TIME = 5;       
 const NEXT_DAY_BTN_TOP = 70;      
 const NEXT_DAY_BTN_SIZE = 64;     
@@ -31,7 +31,8 @@ const gameState = {
     BARRACKS_HEXES: [], 
     COUNCIL_HEXES: [{ q: 2, r: -1 }], 
     tutorialStep: -1, 
-    unlockedHexes: [{ q: 2, r: -1 }], // زمین زیر مجلس از اول باز است
+    // زمین زیر مجلس از ابتدای بازی باز (سفید) است
+    unlockedHexes: [{ q: 2, r: -1 }], 
     selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
     keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa'
 };
@@ -41,7 +42,7 @@ let mapAnimId = null;
 const keys = {}; 
 
 const houseImg = new Image();
-houseImg.src = "house.png";
+houseImg.src = "house1.png";
 const powerplantImg = new Image();
 powerplantImg.src = "powerplant.png";
 const barracksImg = new Image();
