@@ -1,12 +1,12 @@
 // === تنظیمات قابل تغییر توسط شما (فقط این اعداد را تغییر دهید) ===
 const PERSPECTIVE_Y = 0.6;        
-const HOUSE_SCALE = 1.4;          
+const HOUSE_SCALE = 1.1;          
 const POWERPLANT_SCALE = 1.2;     
 const BARRACKS_SCALE = 1.1;       
 const COUNCIL_SCALE = 1.1;            // اندازه مجلس
 const BASE_Y_RATIO = 0.85;        
 const HOUSE_OFFSET_X = 0;         
-const HOUSE_OFFSET_Y = 30;        
+const HOUSE_OFFSET_Y = 35;        
 const POWERPLANT_OFFSET_Y = 10;   
 const BARRACKS_OFFSET_Y = 25;     
 const COUNCIL_OFFSET_Y = 30;          // با این عدد میتونی مجلس رو بالا و پایین کنی
