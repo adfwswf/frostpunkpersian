@@ -17,6 +17,11 @@ const PAUSE_BTN_SIZE = 32;
 const MOBILE_NEXT_DAY_BTN_TOP = 132;  
 const MOBILE_NEXT_DAY_BTN_SIZE = 52; 
 // =================================================================
+// === تنظیمات جایگیری عمودی عکس‌ها در منوی ساخت و ساز ===
+const MENU_HOUSE_OFFSET_Y = 0;        // جابجایی عمودی عکس خانه در منو
+const MENU_POWERPLANT_OFFSET_Y = -2;   // جابجایی عمودی عکس نیروگاه در منو
+const MENU_BARRACKS_OFFSET_Y = 0;     // جابجایی عمودی عکس پادگان در منو
+// =================================================================
 
 let bgMusic = null; 
 let deferredPrompt = null;
@@ -31,8 +36,12 @@ const gameState = {
     BARRACKS_HEXES: [], 
     COUNCIL_HEXES: [{ q: 2, r: -1 }], 
     tutorialStep: -1, 
-    // زمین زیر مجلس از ابتدای بازی باز (سفید) است
-    unlockedHexes: [{ q: 2, r: -1 }], 
+    // زمین زیر مجلس و خونه‌های چسبیده به اون از ابتدای بازی باز (سفید) است
+    unlockedHexes: [
+        { q: 2, r: -1 }, 
+        { q: 3, r: -1 }, { q: 1, r: -1 }, { q: 2, r: 0 }, 
+        { q: 2, r: -2 }, { q: 3, r: -2 }, { q: 1, r: 0 }
+    ], 
     selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
     keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa'
 };
@@ -126,7 +135,7 @@ function loadGame(saveName) {
             gameState.POWERPLANT_HEXES = savedData.POWERPLANT_HEXES; 
             gameState.BARRACKS_HEXES = savedData.BARRACKS_HEXES || []; 
             gameState.COUNCIL_HEXES = savedData.COUNCIL_HEXES || [{ q: 2, r: -1 }]; 
-            gameState.unlockedHexes = savedData.unlockedHexes || [{ q: 2, r: -1 }]; 
+            gameState.unlockedHexes = savedData.unlockedHexes || [{ q: 2, r: -1 }, { q: 3, r: -1 }, { q: 1, r: -1 }, { q: 2, r: 0 }, { q: 2, r: -2 }, { q: 3, r: -2 }, { q: 1, r: 0 }]; 
             gameState.tutorialStep = savedData.tutorialStep !== undefined ? savedData.tutorialStep : 0; 
             return true; 
         } 
@@ -403,21 +412,39 @@ function togglePauseMenu() { gameState.isPaused = !gameState.isPaused; const pm 
 function updateBindTexts() { const elUp = document.getElementById('bindUp'); if(elUp) elUp.innerText = gameState.keyBindings.up.replace('Key', ''); const elDown = document.getElementById('bindDown'); if(elDown) elUp.innerText = gameState.keyBindings.down.replace('Key', ''); const elLeft = document.getElementById('bindLeft'); if(elLeft) elLeft.innerText = gameState.keyBindings.left.replace('Key', ''); const elRight = document.getElementById('bindRight'); if(elRight) elRight.innerText = gameState.keyBindings.right.replace('Key', ''); }
 function calculateCanFit(count) { let totalPop = gameState.HOUSE_HEXES.reduce((sum, h) => sum + h.pop, 0); let totalCapacity = gameState.HOUSE_HEXES.length * 3; return (totalCapacity - totalPop) >= count; }
 
+function unlockAdjacentHexes(targetHex) {
+    const neighbors = [
+        { q: targetHex.q + 1, r: targetHex.r },
+        { q: targetHex.q - 1, r: targetHex.r },
+        { q: targetHex.q, r: targetHex.r + 1 },
+        { q: targetHex.q, r: targetHex.r - 1 },
+        { q: targetHex.q + 1, r: targetHex.r - 1 },
+        { q: targetHex.q - 1, r: targetHex.r + 1 }
+    ];
+    neighbors.forEach(n => {
+        let alreadyUnlocked = gameState.unlockedHexes.some(u => u.q === n.q && u.r === n.r) || hexDistance(n, { q: 0, r: 0 }) <= 1;
+        if (!alreadyUnlocked) {
+            gameState.unlockedHexes.push(n);
+        }
+    });
+}
+
 function executeBuild(target) {
     if (gameState.placingType === 'house') {
         if (gameState.tutorialStep === 4 || gameState.tutorialStep === 0) {
-            if (gameState.wood >= 10) { gameState.wood -= 10; updateUI(); gameState.constructionSites.push({ q: target.q, r: target.r, endTime: Date.now() + 30000, completed: false, type: 'house' }); if (gameState.tutorialStep === 4) { gameState.tutorialStep = 5; updateTutorialBox(); } showNotification(LANG[gameState.currentLang].buildStart, "success"); return true; } 
+            if (gameState.wood >= 10) { gameState.wood -= 10; updateUI(); gameState.constructionSites.push({ q: target.q, r: target.r, endTime: Date.now() + 30000, completed: false, type: 'house' }); unlockAdjacentHexes(target); if (gameState.tutorialStep === 4) { gameState.tutorialStep = 5; updateTutorialBox(); } showNotification(LANG[gameState.currentLang].buildStart, "success"); return true; } 
             else { showNotification(LANG[gameState.currentLang].noWood, "warning"); return false; }
         } else if (gameState.tutorialStep > 0) { showNotification("فعلاً طبق آموزش پیش برو!", "warning"); return false; }
     } else if (gameState.placingType === 'powerplant') {
         if (gameState.tutorialStep === 12 || gameState.tutorialStep === 0) { 
-            if (gameState.stone >= 10) { gameState.stone -= 10; updateUI(); gameState.constructionSites.push({ q: target.q, r: target.r, endTime: Date.now() + 30000, completed: false, type: 'powerplant' }); if (gameState.tutorialStep === 12) { gameState.tutorialStep = 13; updateTutorialBox(); } showNotification("نیروگاه در حال ساخت است و ۱۰ سنگ کم شد!", "success"); return true; } 
+            if (gameState.stone >= 10) { gameState.stone -= 10; updateUI(); gameState.constructionSites.push({ q: target.q, r: target.r, endTime: Date.now() + 30000, completed: false, type: 'powerplant' }); unlockAdjacentHexes(target); if (gameState.tutorialStep === 12) { gameState.tutorialStep = 13; updateTutorialBox(); } showNotification("نیروگاه در حال ساخت است و ۱۰ سنگ کم شد!", "success"); return true; } 
             else { showNotification("سنگ کافی نداری!", "warning"); return false; }
         } else if (gameState.tutorialStep > 0) { showNotification("فعلاً طبق آموزش پیش برو!", "warning"); return false; }
     } else if (gameState.placingType === 'barracks') {
         if (gameState.wood >= 15 && gameState.stone >= 10) { 
             gameState.wood -= 15; gameState.stone -= 10; updateUI(); 
             gameState.constructionSites.push({ q: target.q, r: target.r, endTime: Date.now() + 30000, completed: false, type: 'barracks' }); 
+            unlockAdjacentHexes(target);
             showNotification("پادگان در حال ساخت است!", "success"); return true; 
         } else { showNotification("چوب یا سنگ کافی نداری! (نیاز: ۱۵ چوب و ۱۰ سنگ)", "warning"); return false; }
     }
@@ -679,9 +706,9 @@ function initGame() {
     
     const panelBuild = document.getElementById('panelBuild'); 
     if (panelBuild) panelBuild.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 id="txtBuildTitle" style="font-size:1rem; color:#f4d03f;">ساخت و ساز</h3><button id="closeBuildPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px;">
-        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div id="txtBuildHouse" class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت خانه جدید</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ چوب</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="txtBuildBtn" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="house1.png" style="width:100%; height:100%; object-fit:contain; object-position:center;"></div></div>
-        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت نیروگاه</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectPowerPlant" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="powerplant1.png" style="width:100%; height:100%; object-fit:contain; object-position:center;"></div></div>
-        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت پادگان</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۵ چوب و ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectBarracks" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="barracks.png" style="width:100%; height:100%; object-fit:contain; object-position:center;"></div></div>
+        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div id="txtBuildHouse" class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت خانه جدید</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ چوب</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="txtBuildBtn" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="house1.png" style="width:100%; height:100%; object-fit:contain; object-position:center; transform: translateY(${MENU_HOUSE_OFFSET_Y}px);"></div></div>
+        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت نیروگاه</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectPowerPlant" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="powerplant1.png" style="width:100%; height:100%; object-fit:contain; object-position:center; transform: translateY(${MENU_POWERPLANT_OFFSET_Y}px);"></div></div>
+        <div class="build-item-new" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 15px;"><div class="build-info-text" style="display:flex; flex-direction:column; gap:5px;"><div class="build-name" style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">ساخت پادگان</div><div style="font-size:0.8rem; color:#aaa;">هزینه: ۱۵ چوب و ۱۰ سنگ</div><div class="build-buttons" style="display:flex; gap:8px; margin-top:5px;"><button id="selectBarracks" class="build-btn" style="padding:8px 16px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">ساخت</button></div></div><div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#111; border:1px solid #333; flex-shrink:0; overflow:hidden;"><img src="barracks.png" style="width:100%; height:100%; object-fit:contain; object-position:center; transform: translateY(${MENU_BARRACKS_OFFSET_Y}px);"></div></div>
     </div>`;
     
     const panelMovePop = document.createElement('div'); panelMovePop.className = 'floating-panel'; panelMovePop.id = 'panelMovePop'; panelMovePop.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 id="txtMovePopTitle" style="font-size:1rem; color:#f4d03f;">انتقال جمعیت</h3><button id="closeMovePopPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px; text-align:center;"><p id="txtMovePrompt" style="color:#f5e6c8; margin-bottom:10px;">چند نفر منتقل شوند؟</p><div id="movePopBtns" style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:15px 0;"></div><button id="txtMovePopBtn" class="build-btn" style="width:100%; margin-top:10px;">انتقال</button></div>`; if (gameScreen) gameScreen.appendChild(panelMovePop);
