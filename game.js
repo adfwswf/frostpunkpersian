@@ -503,7 +503,7 @@ function executeBuild(target) {
 }
 
 function handleMapClick() {
-    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r); let isCouncil = gameState.COUNCIL_HEXES.some(c => c.q === target.q and c.r === target.r); let isBarracks = gameState.BARRACKS_HEXES.some(b => b.q === target.q && b.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
+    const target = getHoveredHex(gameState.mouseX, gameState.mouseY); let dist = hexDistance(target, { q: 0, r: 0 }); let isLocked = dist > 1; let isUnlocked = gameState.unlockedHexes.some(u => u.q === target.q && u.r === target.r) || dist <= 1; let isHouse = gameState.HOUSE_HEXES.some(h => h.q === target.q && h.r === target.r); let isPP = gameState.POWERPLANT_HEXES.some(p => p.q === target.q && p.r === target.r); let isCouncil = gameState.COUNCIL_HEXES.some(c => c.q === target.q && c.r === target.r); let isBarracks = gameState.BARRACKS_HEXES.some(b => b.q === target.q && b.r === target.r); let isOccupied = gameState.constructionSites.some(c => c.q === target.q && c.r === target.r);
     
     if (gameState.isMovingPop) { 
         let destHouse = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); 
@@ -645,7 +645,7 @@ function updateExpeditions() {
     completed.forEach(exp => { 
         const res = calculateExpeditionResult(exp); showExpeditionResult(exp, res); 
         let survivors = exp.troops - res.casualties; 
-        if (survivors > 0) { let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 and h.r === 0); if (mainHouse) mainHouse.pop += survivors; } 
+        if (survivors > 0) { let mainHouse = gameState.HOUSE_HEXES.find(h => h.q === 0 && h.r === 0); if (mainHouse) mainHouse.pop += survivors; } 
         gameState.wood += res.wood; gameState.stone += res.stone; gameState.food += res.food; gameState.fuel += res.fuel; updateUI(); 
     }); 
     if (completed.length > 0) { const completedIds = completed.map(c => c.id); gameState.expeditions = gameState.expeditions.filter(e => !completedIds.includes(e.id)); } 
@@ -1081,7 +1081,7 @@ function initGame() {
     if (requestsBtn) requestsBtn.onclick = () => { 
         if (isBarracksModalOpen()) { showNotification("ابتدا کار با پادگان را تمام کنید!", "warning"); return; }
         closeCouncilModalFn(); closeBarracksModalFn();
-        if (gameState.tutorialStep > 0 and gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
         if (panelRequests.classList.contains('panel-open')) {
             panelRequests.classList.remove('panel-open'); return;
         }
