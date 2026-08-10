@@ -7,7 +7,7 @@ const COUNCIL_SCALE = 1.1;            // اندازه مجلس
 const BASE_Y_RATIO = 0.85;        
 const HOUSE_OFFSET_X = 0;         
 const HOUSE_OFFSET_Y = 15;        
-const POWERPLANT_OFFSET_Y = 20;   
+const POWERPLANT_OFFSET_Y = 10;   
 const BARRACKS_OFFSET_Y = 25;     
 const COUNCIL_OFFSET_Y = 15;          // با این عدد میتونی مجلس رو بالا و پایین کنی
 const MUSIC_START_TIME = 5;       
@@ -36,7 +36,6 @@ const gameState = {
     BARRACKS_HEXES: [], 
     COUNCIL_HEXES: [{ q: 2, r: -1 }], 
     tutorialStep: -1, 
-    // زمین زیر مجلس و خونه‌های چسبیده به اون از ابتدای بازی باز (سفید) است
     unlockedHexes: [
         { q: 2, r: -1 }, 
         { q: 3, r: -1 }, { q: 1, r: -1 }, { q: 2, r: 0 }, 
@@ -504,6 +503,15 @@ function handleMapClick() {
         else { if (executeBuild(target)) { gameState.isPlacing = false; gameState.placingSelectedHex = null; updateActionTracker(); } return; }
     }
     
+    if (isCouncil && !gameState.isPlacing && !gameState.isMovingPop) { 
+        const cm = document.getElementById('councilModal');
+        if (cm) {
+            cm.style.display = 'flex';
+            setTimeout(() => { cm.style.opacity = 1; cm.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
+        }
+        return; 
+    }
+
     if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
     
     if (isLocked && !isUnlocked && !isHouse && !isPP && !isCouncil && !isBarracks && !isOccupied) { 
@@ -629,7 +637,12 @@ function initGame() {
     const startBtnHero = document.getElementById('startBtnHero'); if (startBtnHero) { startBtnHero.onclick = () => { gameState.currentSaveName = null; showStoryScreen(); }; }
     const startActualGameBtn = document.getElementById('startActualGameBtn'); if (startActualGameBtn) { startActualGameBtn.onclick = startActualGame; }
     const heroActions = document.querySelector('.hero-actions'); if (heroActions && startBtnHero) { if (hasSavedGame()) { const continueBtn = document.createElement('button'); continueBtn.id = 'btnContinueHero'; continueBtn.className = 'btn-primary'; continueBtn.innerText = 'ادامه بازی'; continueBtn.style.marginRight = '15px'; continueBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)'; continueBtn.onclick = continueGame; heroActions.insertBefore(continueBtn, startBtnHero); } }
-    const navCta = document.querySelector('.nav-cta'); if (navCta) { navCta.innerText = 'نصب بازی'; navCta.style.display = 'inline-flex'; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; navCta.innerText = 'نصب بازی'; navCta.style.opacity = '1'; navCta.style.pointerEvents = 'auto'; }); navCta.addEventListener('click', (e) => { e.preventDefault(); if (deferredPrompt) { navCta.innerText = 'در حال نصب...'; deferredPrompt.prompt(); deferredPrompt.userChoice.then((choiceResult) => { if (choiceResult.outcome === 'accepted') { showNotification("بازی با موفقیت نصب شد!", "success"); navCta.innerText = 'بازی نصب شد'; navCta.style.opacity = '0.5'; navCta.style.pointerEvents = 'none'; } else { navCta.innerText = 'نصب بازی'; } deferredPrompt = null; }); } else { const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; if (isIOS) { showNotification("در آیفون: روی دکمه Share بزنید و Add to Home Screen را انتخاب کنید.", "info"); } else { showNotification("برای نصب، از منوی مرورگر (سه نقطه) گزینه Install App را انتخاب کنید.", "info"); } } }); window.addEventListener('appinstalled', () => { navCta.innerText = 'بازی نصب شد'; navCta.style.opacity = '0.5'; navCta.style.pointerEvents = 'none'; }); }
+    
+    // === تغییر برای مایکت: دکمه نصب بازی کاملاً مخفی می‌شود ===
+    const navCta = document.querySelector('.nav-cta'); 
+    if (navCta) { navCta.style.display = 'none'; }
+    // =========================================================
+
     if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed: ', err)); }); }
     const eventCloseBtn = document.getElementById('eventClose'); if (eventCloseBtn) eventCloseBtn.onclick = () => { const ep = document.getElementById('event-panel'); if(ep) ep.classList.replace('event-panel-visible', 'event-panel-hidden'); };
     
@@ -643,6 +656,16 @@ function initGame() {
         .top-bar-center { position: relative; padding: 0 20px !important; justify-content: center !important; flex: 1 !important; }
         .resource-icon { font-size: 0.9rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .mobile-line-break { display: none !important; }
+        
+        /* === تنظیمات سایز برای لپ‌تاپ و دسکتاپ === */
+        @media (min-width: 769px) {
+            .hero-actions button { padding: 10px 25px !important; font-size: 1rem !important; }
+            #story-screen h1 { font-size: 2.5rem !important; }
+            #story-screen p { font-size: 1.1rem !important; }
+            #story-screen button { padding: 10px 20px !important; font-size: 0.95rem !important; width: auto !important; min-width: 150px; }
+            .floating-panel { width: 400px !important; }
+        }
+        
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
             #dispatchTroopsModal { width: 90% !important; padding: 15px !important; }
@@ -701,6 +724,54 @@ function initGame() {
     const starvationModal = document.createElement('div'); starvationModal.id = 'starvationModal'; starvationModal.style.cssText = "position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 400px; max-width: 95%; background: rgba(10, 14, 26, 0.95); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 16px; z-index: 500; display: none; flex-direction: row; gap: 15px; padding: 15px; align-items: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);"; starvationModal.innerHTML = `<div style="flex: 1; text-align: right;"><h3 style="color: #e74c3c; margin-bottom: 10px; font-size: 0.9rem;">گزارش تلفات</h3><p id="starvationText" style="color: #e8dcc8; font-size: 0.8rem; line-height: 1.6;"></p><button id="starvationBtn" style="margin-top: 10px; padding: 6px 15px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer; font-size: 0.8rem;">متوجه شدم</button></div><img src="starvation.png" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #111; border: 1px solid #333; flex-shrink: 0;">`; if (gameScreen) gameScreen.appendChild(starvationModal); const starvationBtn = document.getElementById('starvationBtn'); if (starvationBtn) starvationBtn.onclick = () => starvationModal.style.display = 'none';
     const unlockModal = document.createElement('div'); unlockModal.id = 'unlockModal'; unlockModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);"; unlockModal.innerHTML = `<h3 id="txtUnlockTitle" style="color: #f4d03f; margin-bottom: 15px;">باز کردن قفل</h3><p id="txtUnlockQ" style="color: #e8dcc8; margin-bottom: 5px;">آیا می‌خواهید این قفل را باز کنید؟</p><p id="txtUnlockCost" style="color: #aaa; font-size: 0.8rem; margin-bottom: 20px;">این کار ۱۰ سنگ هزینه دارد.</p><div style="display: flex; gap: 10px;"><button id="txtUnlockYes" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">بله، باز کن</button><button id="txtCancelUnlock" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer;">انصراف</button></div>`; if (gameScreen) gameScreen.appendChild(unlockModal); const txtUnlockYes = document.getElementById('txtUnlockYes'); if (txtUnlockYes) txtUnlockYes.onclick = () => { unlockModal.style.display = 'none'; if (gameState.stone >= 10) { gameState.stone -= 10; gameState.unlockedHexes.push(gameState.pendingUnlockTarget); updateUI(); showNotification("قفل باز شد و ۱۰ سنگ کم شد!", "success"); if (gameState.tutorialStep === 1) { gameState.tutorialStep = 2; updateTutorialBox(); } else if (gameState.tutorialStep === 9) { gameState.tutorialStep = 10; updateTutorialBox(); } } else { showNotification("سنگ کافی نداری!", "warning"); } }; const txtCancelUnlock = document.getElementById('txtCancelUnlock'); if (txtCancelUnlock) txtCancelUnlock.onclick = () => unlockModal.style.display = 'none';
     const dispatchTroopsModal = document.createElement('div'); dispatchTroopsModal.id = 'dispatchTroopsModal'; dispatchTroopsModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;"; dispatchTroopsModal.innerHTML = `<h3 id="txtDispatchTitle" style="color: #f4d03f; margin-bottom: 5px;">اعزام نیرو</h3><p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;"><span id="txtDispatchQ">اعزام شوند؟</span> <span id="modalRegionName" style="color:#f4d03f; font-weight:bold;"></span></p><div id="dispatchTroopsBtns" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px;"></div><button id="txtCancelDispatch" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">انصراف</button>`; if (gameScreen) gameScreen.appendChild(dispatchTroopsModal); const txtCancelDispatch = document.getElementById('txtCancelDispatch'); if (txtCancelDispatch) txtCancelDispatch.onclick = () => { dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; };
+
+    // === ایجاد مودال مجلس و احزاب ===
+    const councilModal = document.createElement('div'); 
+    councilModal.id = 'councilModal'; 
+    councilModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 400px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; gap: 15px; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
+    councilModal.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h3 style="color: #f4d03f; margin: 0;">مجلس شهر</h3>
+            <button id="closeCouncilModal" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>
+        
+        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+            <img src="party_steel.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right;">
+                <div style="color: #e74c3c; font-weight: 700; font-size: 1rem;">سپاه پولاد</div>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: جنگ</div>
+                <button class="view-members-btn" data-party="سپاه پولاد" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+            <img src="party_reconstruction.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right;">
+                <div style="color: #27ae60; font-weight: 700; font-size: 1rem;">دیوان ابادانی</div>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: ساخت و ساز</div>
+                <button class="view-members-btn" data-party="دیوان ابادانی" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+            <img src="party_earthshakers.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right;">
+                <div style="color: #3498db; font-weight: 700; font-size: 1rem;">انجمن زمین‌شکافان</div>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: اکتشاف</div>
+                <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+            </div>
+        </div>
+    `;
+    if (gameScreen) gameScreen.appendChild(councilModal); 
+    const closeCouncilModal = document.getElementById('closeCouncilModal'); 
+    if (closeCouncilModal) closeCouncilModal.onclick = () => { councilModal.style.display = 'none'; councilModal.style.opacity = 0; councilModal.style.transform = 'translate(-50%, -50%) scale(0.9)'; };
+    document.querySelectorAll('.view-members-btn').forEach(btn => {
+        btn.onclick = () => {
+            let partyName = btn.getAttribute('data-party');
+            showNotification(`لیست اعضای حزب «${partyName}» در حال آماده‌سازی است...`, "info");
+        };
+    });
+
     const panelExplore = document.createElement('div'); panelExplore.className = 'floating-panel'; panelExplore.id = 'panelExplore'; panelExplore.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 id="txtExploreTitle" style="font-size:1rem; color:#f4d03f;">اکتشاف</h3><button id="closeExplorePanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px; max-height: 400px; overflow-y: auto;"><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">کویر لوت</div><div class="region-risk" data-val="۰ تا ۱۰۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۱۰۰ درصد</div><div class="region-reward" data-val="۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت</div><button id="dispatchLut" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">آبشار لاتون</div><div class="region-risk" data-val="۰ تا ۷۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۷۰ درصد</div><div class="region-reward" data-val="۱۰ غذا، ۲۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ غذا، ۲۰ سنگ</div><button id="dispatchLaton" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">تخت جمشید</div><div class="region-risk" data-val="۰ تا ۴۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۴۰ درصد</div><div class="region-reward" data-val="۱۰ چوب، ۱۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ چوب، ۱۰ سنگ</div><button id="dispatchPersepolis" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div></div>`; if (gameScreen) gameScreen.appendChild(panelExplore);
     const panelRequests = document.createElement('div'); panelRequests.className = 'floating-panel'; panelRequests.id = 'panelRequests'; panelRequests.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(201,168,76,0.1);"><h3 style="font-size:1rem; color:#f4d03f;">درخواست‌ها</h3><button id="closeRequestsPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" id="requestTrackerBody" style="padding:16px; max-height: 400px; overflow-y: auto;"><p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p></div>`; if (gameScreen) gameScreen.appendChild(panelRequests); const closeRequestsPanel = document.getElementById('closeRequestsPanel'); if (closeRequestsPanel) closeRequestsPanel.onclick = () => panelRequests.classList.remove('panel-open');
     
