@@ -7,7 +7,7 @@ const COUNCIL_SCALE = 1.1;            // اندازه مجلس
 const BASE_Y_RATIO = 0.85;        
 const HOUSE_OFFSET_X = 0;         
 const HOUSE_OFFSET_Y = 15;        
-const POWERPLANT_OFFSET_Y = 20;   // تغییر به 20
+const POWERPLANT_OFFSET_Y = 20;   
 const BARRACKS_OFFSET_Y = 25;     
 const COUNCIL_OFFSET_Y = 15;          // با این عدد میتونی مجلس رو بالا و پایین کنی
 const MUSIC_START_TIME = 5;       
@@ -42,7 +42,8 @@ const gameState = {
         { q: 2, r: -2 }, { q: 3, r: -2 }, { q: 1, r: 0 }
     ], 
     selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
-    keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa'
+    keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa',
+    soldiersLvl1: 0, soldiersLvl2: 0
 };
 
 const camera = { x: 0, y: 0, zoom: 1, dragging: false, dragStartX: 0, dragStartY: 0, startCamX: 0, startCamY: 0 };
@@ -512,6 +513,17 @@ function handleMapClick() {
         return; 
     }
 
+    if (isBarracks && !gameState.isPlacing && !gameState.isMovingPop) {
+        const bm = document.getElementById('barracksModal');
+        if (bm) {
+            bm.style.display = 'flex';
+            setTimeout(() => { bm.style.opacity = 1; bm.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
+            document.getElementById('barracksLvl1Count').innerText = gameState.soldiersLvl1;
+            document.getElementById('barracksLvl2Count').innerText = gameState.soldiersLvl2;
+        }
+        return; 
+    }
+
     if (isHouse && !gameState.isPlacing) { 
         const cm = document.getElementById('councilModal'); if (cm) { cm.style.display = 'none'; cm.style.opacity = 0; cm.style.transform = 'translate(-50%, -50%) scale(0.9)'; }
         let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; 
@@ -649,10 +661,10 @@ function initGame() {
         #game-screen, #game-screen * { font-family: 'Vazirmatn', sans-serif !important; }
         button, input, select, textarea { font-family: 'Vazirmatn', sans-serif !important; }
         
-        /* === زیباسازی اسکرول‌بار خاکستری === */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        /* === زیباسازی اسکرول‌بار خاکستری با فاصله === */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; margin: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(136, 136, 136, 0.7); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #aaa; }
         
         #tutorialPointer { position: fixed; width: 60px; height: 60px; border-radius: 50%; border: 4px solid #f4d03f; box-shadow: 0 0 15px #f4d03f, inset 0 0 15px #f4d03f; z-index: 999; display: none; pointer-events: none; animation: pulse 1.5s infinite; }
@@ -674,10 +686,7 @@ function initGame() {
         @media (min-width: 769px) {
             .floating-panel { width: 400px !important; max-height: 80vh !important; display: flex !important; flex-direction: column !important; }
             .panel-body { overflow-y: auto !important; flex: 1 !important; }
-            #rightPanelContainer { width: 250px !important; right: 20px !important; top: 80px !important; }
-            #actionTracker > div { padding: 12px !important; }
-            #actionTracker > div > div { font-size: 1.1rem !important; margin-bottom: 8px !important; }
-            #actionTracker button { font-size: 0.95rem !important; padding: 10px !important; }
+            #rightPanelContainer { display: none !important; }
         }
 
         /* === نوار طلایی دور پنجره‌های شناور === */
@@ -757,6 +766,42 @@ function initGame() {
     const unlockModal = document.createElement('div'); unlockModal.id = 'unlockModal'; unlockModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);"; unlockModal.innerHTML = `<h3 id="txtUnlockTitle" style="color: #f4d03f; margin-bottom: 15px;">باز کردن قفل</h3><p id="txtUnlockQ" style="color: #e8dcc8; margin-bottom: 5px;">آیا می‌خواهید این قفل را باز کنید؟</p><p id="txtUnlockCost" style="color: #aaa; font-size: 0.8rem; margin-bottom: 20px;">این کار ۱۰ سنگ هزینه دارد.</p><div style="display: flex; gap: 10px;"><button id="txtUnlockYes" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">بله، باز کن</button><button id="txtCancelUnlock" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer;">انصراف</button></div>`; if (gameScreen) gameScreen.appendChild(unlockModal); const txtUnlockYes = document.getElementById('txtUnlockYes'); if (txtUnlockYes) txtUnlockYes.onclick = () => { unlockModal.style.display = 'none'; if (gameState.stone >= 10) { gameState.stone -= 10; gameState.unlockedHexes.push(gameState.pendingUnlockTarget); updateUI(); showNotification("قفل باز شد و ۱۰ سنگ کم شد!", "success"); if (gameState.tutorialStep === 1) { gameState.tutorialStep = 2; updateTutorialBox(); } else if (gameState.tutorialStep === 9) { gameState.tutorialStep = 10; updateTutorialBox(); } } else { showNotification("سنگ کافی نداری!", "warning"); } }; const txtCancelUnlock = document.getElementById('txtCancelUnlock'); if (txtCancelUnlock) txtCancelUnlock.onclick = () => unlockModal.style.display = 'none';
     const dispatchTroopsModal = document.createElement('div'); dispatchTroopsModal.id = 'dispatchTroopsModal'; dispatchTroopsModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;"; dispatchTroopsModal.innerHTML = `<h3 id="txtDispatchTitle" style="color: #f4d03f; margin-bottom: 5px;">اعزام نیرو</h3><p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;"><span id="txtDispatchQ">اعزام شوند؟</span> <span id="modalRegionName" style="color:#f4d03f; font-weight:bold;"></span></p><div id="dispatchTroopsBtns" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px;"></div><button id="txtCancelDispatch" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">انصراف</button>`; if (gameScreen) gameScreen.appendChild(dispatchTroopsModal); const txtCancelDispatch = document.getElementById('txtCancelDispatch'); if (txtCancelDispatch) txtCancelDispatch.onclick = () => { dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; };
 
+    // === ایجاد مودال پادگان ===
+    const barracksModal = document.createElement('div'); 
+    barracksModal.id = 'barracksModal'; 
+    barracksModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; gap: 20px; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
+    barracksModal.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; margin: 0 10px; border-bottom: 1px solid rgba(201,168,76,0.15);">
+            <h3 style="color: #f4d03f; margin: 0;">پادگان</h3>
+            <button id="closeBarracksModal" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>
+        
+        <div style="display: flex; justify-content: space-around; padding: 10px;">
+            <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); flex: 1; margin: 0 5px;">
+                <img src="soldier_lvl1.png" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
+                <div style="color: #f5e6c8; font-size: 0.9rem;">سربازان سطح ۱</div>
+                <div id="barracksLvl1Count" style="color: #f4d03f; font-size: 1.5rem; font-weight: bold; margin-top: 5px;">0</div>
+            </div>
+            <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); flex: 1; margin: 0 5px;">
+                <img src="soldier_lvl2.png" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
+                <div style="color: #f5e6c8; font-size: 0.9rem;">سربازان سطح ۲</div>
+                <div id="barracksLvl2Count" style="color: #f4d03f; font-size: 1.5rem; font-weight: bold; margin-top: 5px;">0</div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 0 10px;">
+            <button id="btnCreateSoldier" style="padding: 12px; background: linear-gradient(145deg, #f4d03f, #c9a84c); border: none; border-radius: 8px; color: #1a1a2e; font-weight: 700; cursor: pointer; font-size: 1rem;">ایجاد سرباز جدید</button>
+            <button id="btnUpgradeSoldier" style="padding: 12px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1rem;">ارتقای سرباز</button>
+        </div>
+    `;
+    if (gameScreen) gameScreen.appendChild(barracksModal); 
+    const closeBarracksModal = document.getElementById('closeBarracksModal'); 
+    if (closeBarracksModal) closeBarracksModal.onclick = () => { barracksModal.style.display = 'none'; barracksModal.style.opacity = 0; barracksModal.style.transform = 'translate(-50%, -50%) scale(0.9)'; };
+    const btnCreateSoldier = document.getElementById('btnCreateSoldier');
+    if (btnCreateSoldier) btnCreateSoldier.onclick = () => { showNotification("سیستم ایجاد سرباز به زودی فعال می‌شود!", "info"); };
+    const btnUpgradeSoldier = document.getElementById('btnUpgradeSoldier');
+    if (btnUpgradeSoldier) btnUpgradeSoldier.onclick = () => { showNotification("سیستم ارتقای سرباز به زودی فعال می‌شود!", "info"); };
+
     // === ایجاد مودال مجلس و احزاب ===
     const councilModal = document.createElement('div'); 
     councilModal.id = 'councilModal'; 
@@ -833,9 +878,10 @@ function initGame() {
     updateBindTexts(); const bindUp = document.getElementById('bindUp'); if (bindUp) bindUp.onclick = () => { gameState.rebindingKey = 'up'; bindUp.innerText = '...'; }; const bindDown = document.getElementById('bindDown'); if (bindDown) bindDown.onclick = () => { gameState.rebindingKey = 'down'; bindDown.innerText = '...'; }; const bindLeft = document.getElementById('bindLeft'); if (bindLeft) bindLeft.onclick = () => { gameState.rebindingKey = 'left'; bindLeft.innerText = '...'; }; const bindRight = document.getElementById('bindRight'); if (bindRight) bindRight.onclick = () => { gameState.rebindingKey = 'right'; bindRight.innerText = '...'; };
     
     const closeCouncilModalFn = () => { const cm = document.getElementById('councilModal'); if (cm) { cm.style.display = 'none'; cm.style.opacity = 0; cm.style.transform = 'translate(-50%, -50%) scale(0.9)'; } };
+    const closeBarracksModalFn = () => { const bm = document.getElementById('barracksModal'); if (bm) { bm.style.display = 'none'; bm.style.opacity = 0; bm.style.transform = 'translate(-50%, -50%) scale(0.9)'; } };
     const btnBuild = document.getElementById('btnBuild');
     if (btnBuild) btnBuild.onclick = () => { 
-        closeCouncilModalFn();
+        closeCouncilModalFn(); closeBarracksModalFn();
         if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 2 && gameState.tutorialStep !== 10) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
         if (panelBuild.classList.contains('panel-open') && (gameState.tutorialStep === 0 || gameState.tutorialStep === -1)) {
             panelBuild.classList.remove('panel-open'); return;
@@ -852,7 +898,7 @@ function initGame() {
     if (selectBarracks) selectBarracks.onclick = () => { gameState.isPlacing = true; gameState.placingType = 'barracks'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); };
     
     if (exploreBtn) exploreBtn.onclick = () => { 
-        closeCouncilModalFn();
+        closeCouncilModalFn(); closeBarracksModalFn();
         if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
         if (panelExplore.classList.contains('panel-open') && (gameState.tutorialStep === 0 || gameState.tutorialStep === -1)) {
             panelExplore.classList.remove('panel-open'); return;
@@ -863,7 +909,7 @@ function initGame() {
     const closeExplorePanel = document.getElementById('closeExplorePanel'); if (closeExplorePanel) closeExplorePanel.onclick = () => { if (panelExplore) panelExplore.classList.remove('panel-open'); };
     
     if (requestsBtn) requestsBtn.onclick = () => { 
-        closeCouncilModalFn();
+        closeCouncilModalFn(); closeBarracksModalFn();
         if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
         if (panelRequests.classList.contains('panel-open')) {
             panelRequests.classList.remove('panel-open'); return;
