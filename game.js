@@ -262,10 +262,10 @@ function updateActionTracker() {
     if (!tracker) return;
     let html = '';
     if (currentState === 'move') {
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div><button id="cancelMoveTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button></div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.8rem; margin-bottom: 4px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div><button id="cancelMoveTrackBtn" style="width: 100%; padding: 5px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.75rem;">انصراف</button></div>`;
     } else if (currentState.startsWith('build_')) {
         const buildingName = gameState.placingType === 'powerplant' ? 'نیروگاه' : (gameState.placingType === 'barracks' ? 'پادگان' : 'خانه');
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.7rem; margin-bottom: 4px; text-align: center;">در حال انتخاب موقعیت ${buildingName}</div><button id="cancelBuildTrackBtn" style="width: 100%; padding: 3px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.7rem;">انصراف</button></div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.8rem; margin-bottom: 4px; text-align: center;">در حال انتخاب موقعیت ${buildingName}</div><button id="cancelBuildTrackBtn" style="width: 100%; padding: 5px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.75rem;">انصراف</button></div>`;
     }
     tracker.style.display = 'flex'; tracker.innerHTML = html;
     const cancelMoveBtn = document.getElementById('cancelMoveTrackBtn');
@@ -653,6 +653,13 @@ function initGame() {
     style.innerHTML = `
         #game-screen, #game-screen * { font-family: 'Vazirmatn', sans-serif !important; }
         button, input, select, textarea { font-family: 'Vazirmatn', sans-serif !important; }
+        
+        /* === زیباسازی اسکرول‌بار برای کل بازی === */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #f4d03f; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c9a84c; }
+        
         #tutorialPointer { position: fixed; width: 60px; height: 60px; border-radius: 50%; border: 4px solid #f4d03f; box-shadow: 0 0 15px #f4d03f, inset 0 0 15px #f4d03f; z-index: 999; display: none; pointer-events: none; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         #top-bar { height: auto !important; min-height: 0 !important; padding: 8px 15px !important; align-items: center !important; border-bottom: none !important; }
@@ -660,13 +667,12 @@ function initGame() {
         .resource-icon { font-size: 0.9rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .mobile-line-break { display: none !important; }
         
-        /* === تنظیمات سایز برای لپ‌تاپ و دسکتاپ === */
+        /* === تنظیمات لپ‌تاپ و دسکتاپ === */
         @media (min-width: 769px) {
-            .hero-actions button { padding: 10px 25px !important; font-size: 1rem !important; }
-            #story-screen h1 { font-size: 2.5rem !important; }
-            #story-screen p { font-size: 1.1rem !important; }
-            #story-screen button { padding: 10px 20px !important; font-size: 0.95rem !important; width: auto !important; min-width: 150px; }
             .floating-panel { width: 400px !important; }
+            #rightPanelContainer { width: 250px !important; right: 20px !important; top: 80px !important; }
+            #actionTracker > div { padding: 10px !important; font-size: 0.9rem !important; }
+            #actionTracker button { font-size: 0.85rem !important; padding: 6px !important; }
         }
 
         /* === نوار طلایی دور پنجره‌های شناور === */
@@ -678,7 +684,7 @@ function initGame() {
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
             #dispatchTroopsModal { width: 90% !important; padding: 15px !important; }
-            #dispatchTroopsBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; margin: 5px !important; }
+            #dispatchTroopsBtns button { width: 40px !important; height: 40px !important; font-size: 0.9rem !important; margin: 4px !important; }
             #tutorialBox { width: 95% !important; padding: 15px !important; bottom: 60px !important; gap: 10px !important; }
             #tutorialBox img { width: 60px !important; height: 60px !important; }
             #tutorialBox p { font-size: 0.8rem !important; line-height: 1.5 !important; }
@@ -751,7 +757,7 @@ function initGame() {
     councilModal.id = 'councilModal'; 
     councilModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 400px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; gap: 15px; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
     councilModal.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(201,168,76,0.1);">
             <h3 style="color: #f4d03f; margin: 0;">مجلس شهر</h3>
             <button id="closeCouncilModal" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
         </div>
@@ -868,7 +874,7 @@ function initGame() {
         gameState.selectedRegion = regionName; const mrn = document.getElementById('modalRegionName'); if(mrn) mrn.innerText = regionName; 
         const btnsDiv = document.getElementById('dispatchTroopsBtns'); if(btnsDiv) btnsDiv.innerHTML = ''; 
         for(let i=1; i<=maxTroops; i++) { 
-            let b = document.createElement('button'); b.innerText = i; b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: 5px;"; b.onmouseover = () => b.style.background = '#34495e'; b.onmouseout = () => b.style.background = '#2c3e50'; b.onclick = () => { if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; startExpedition(gameState.selectedRegion, i); dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; if (panelExplore) panelExplore.classList.remove('panel-open'); }; if(btnsDiv) btnsDiv.appendChild(b); } dispatchTroopsModal.style.display = 'block'; setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); 
+            let b = document.createElement('button'); b.innerText = i; b.style.cssText = "width: 40px; height: 40px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: 4px;"; b.onmouseover = () => b.style.background = '#34495e'; b.onmouseout = () => b.style.background = '#2c3e50'; b.onclick = () => { if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; startExpedition(gameState.selectedRegion, i); dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; if (panelExplore) panelExplore.classList.remove('panel-open'); }; if(btnsDiv) btnsDiv.appendChild(b); } dispatchTroopsModal.style.display = 'block'; setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); 
     };
     const dispatchLut = document.getElementById('dispatchLut'); if (dispatchLut) dispatchLut.onclick = () => openDispatchModal('کویر لوت');
     const dispatchLaton = document.getElementById('dispatchLaton'); if (dispatchLaton) dispatchLaton.onclick = () => openDispatchModal('آبشار لاتون');
