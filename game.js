@@ -43,7 +43,8 @@ const gameState = {
     ], 
     selectedRegion: null, moveSource: null, moveAmount: 0, expeditions: [], migrantRequests: [], pendingUnlockTarget: null,
     keyBindings: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, rebindingKey: null, currentLang: 'fa',
-    soldiersLvl1: 0, soldiersLvl2: 0
+    soldiersLvl1: 0, soldiersLvl2: 0,
+    training: { active: false, remaining: 0, targetTime: 0, isUpgrade: false }
 };
 
 const camera = { x: 0, y: 0, zoom: 1, dragging: false, dragStartX: 0, dragStartY: 0, startCamX: 0, startCamY: 0 };
@@ -275,6 +276,57 @@ function updateActionTracker() {
     if (cancelBuildBtn) { cancelBuildBtn.addEventListener('click', () => { gameState.isPlacing = false; gameState.placingSelectedHex = null; showNotification("ساخت لغو شد", "info"); updateActionTracker(); }); }
 }
 
+function updateBarracksProgress() {
+    if (!gameState.training.active) return;
+    
+    const now = Date.now();
+    const t = gameState.training;
+    const progress = Math.max(0, 1 - ((t.targetTime - now) / 10000));
+    
+    if (now >= t.targetTime) {
+        if (t.isUpgrade) {
+            gameState.soldiersLvl1--;
+            gameState.soldiersLvl2++;
+        } else {
+            gameState.soldiersLvl1++;
+        }
+        t.remaining--;
+        updateBarracksUI(); 
+        
+        if (t.remaining > 0) {
+            t.targetTime = now + 10000;
+        } else {
+            t.active = false;
+            showNotification("عملیات پادگان با موفقیت تکمیل شد!", "success");
+            updateBarracksUI(); 
+        }
+    } else {
+        const bar = document.getElementById('barracksProgressBar');
+        if (bar) bar.style.width = (progress * 100) + '%';
+    }
+}
+
+function updateBarracksUI() {
+    const t = gameState.training;
+    const container = document.getElementById('barracksProgressBarContainer');
+    const txt = document.getElementById('barracksProgressText');
+    const bar = document.getElementById('barracksProgressBar');
+    
+    if (container) {
+        if (t.active) {
+            container.style.display = 'block';
+            if (txt) txt.innerText = (t.isUpgrade ? "در حال ارتقای " : "در حال ایجاد ") + t.remaining + " سرباز";
+        } else {
+            container.style.display = 'none';
+        }
+    }
+    
+    const el1 = document.getElementById('barracksLvl1Count');
+    const el2 = document.getElementById('barracksLvl2Count');
+    if (el1) el1.innerText = gameState.soldiersLvl1;
+    if (el2) el2.innerText = gameState.soldiersLvl2;
+}
+
 function drawMap() {
     if (gameState.gameOver) return;
     const canvas = document.getElementById('gameMap'); if (!canvas) return; const ctx = canvas.getContext('2d'); const container = document.getElementById('map-container'); if(!container) return; const rect = container.getBoundingClientRect(); if (rect.width === 0 || rect.height === 0) return; const dpr = window.devicePixelRatio || 1;
@@ -387,7 +439,7 @@ function drawMap() {
         }
     }
     ctx.restore(); 
-    if (!gameState.isPaused) { updateExpeditions(); updateRequests(); }
+    if (!gameState.isPaused) { updateExpeditions(); updateRequests(); updateBarracksProgress(); }
     updateActionTracker();
 }
 
@@ -518,8 +570,7 @@ function handleMapClick() {
         if (bm) {
             bm.style.display = 'flex';
             setTimeout(() => { bm.style.opacity = 1; bm.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
-            document.getElementById('barracksLvl1Count').innerText = gameState.soldiersLvl1;
-            document.getElementById('barracksLvl2Count').innerText = gameState.soldiersLvl2;
+            updateBarracksUI();
         }
         return; 
     }
@@ -642,6 +693,66 @@ function adjustMapTop() { const topBar = document.getElementById('top-bar'); con
 function closeAllPanels(exceptId) { const panels = ['panelBuild', 'panelExplore', 'panelRequests', 'panelMovePop']; panels.forEach(id => { if (id !== exceptId) { const p = document.getElementById(id); if (p) p.classList.remove('panel-open'); } }); }
 function openMovePopPanel(maxPop) { closeAllPanels('panelMovePop'); const btnsDiv = document.getElementById('movePopBtns'); if(!btnsDiv) return; btnsDiv.innerHTML = ''; for(let i=1; i<=maxPop; i++) { let b = document.createElement('button'); b.innerText = i; b.style.cssText = "width: 50px; height: 50px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-family: 'Vazirmatn', sans-serif; margin: 5px;"; b.onmouseover = () => { if(b.style.background !== 'rgb(244, 208, 63)') b.style.background = '#34495e'; }; b.onmouseout = () => { if(b.style.background !== 'rgb(244, 208, 63)') b.style.background = '#2c3e50'; }; b.onclick = () => { gameState.moveAmount = i; document.querySelectorAll('#movePopBtns button').forEach(btn => { btn.style.background = '#2c3e50'; btn.style.color = '#fff'; }); b.style.background = '#f4d03f'; b.style.color = '#000'; }; btnsDiv.appendChild(b); } gameState.moveAmount = 1; if(btnsDiv.firstChild) btnsDiv.firstChild.click(); const pmp = document.getElementById('panelMovePop'); if(pmp) pmp.classList.add('panel-open'); }
 function showAngryMoveModal() { const modal = document.getElementById('angryMoveModal'); if(modal) modal.style.display = 'flex'; gameState.satisfaction = Math.max(0, gameState.satisfaction - 1); updateUI(); showNotification("۱ درصد رضایت کم شد!", "warning"); }
+
+function openBarracksSelect(isUpgrade, maxCount) {
+    const modal = document.getElementById('barracksSelectModal');
+    const title = document.getElementById('barracksSelectTitle');
+    const question = document.getElementById('barracksSelectQuestion');
+    const btnsDiv = document.getElementById('barracksSelectBtns');
+    
+    title.innerText = isUpgrade ? "ارتقای سرباز" : "ایجاد سرباز جدید";
+    question.innerHTML = isUpgrade ? `تعداد سربازانی که می‌خواهید ارتقا دهید را انتخاب کنید (حداکثر ${maxCount} نفر):` : `تعداد سربازانی که می‌خواهید ایجاد کنید را انتخاب کنید (حداکثر ${maxCount} نفر):`;
+    
+    btnsDiv.innerHTML = '';
+    for(let i=1; i<=maxCount; i++) {
+        let b = document.createElement('button');
+        b.innerText = i;
+        b.style.cssText = "width: 40px; height: 40px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; margin: 4px;";
+        b.onclick = () => {
+            modal.style.display = 'none';
+            modal.style.opacity = 0;
+            openBarracksConfirm(isUpgrade, i);
+        };
+        btnsDiv.appendChild(b);
+    }
+    
+    modal.style.display = 'block';
+    setTimeout(() => { modal.style.opacity = 1; modal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
+}
+
+function openBarracksConfirm(isUpgrade, count) {
+    const modal = document.getElementById('barracksConfirmModal');
+    const title = document.getElementById('barracksConfirmTitle');
+    const question = document.getElementById('barracksConfirmQuestion');
+    const cost = count * 3;
+    
+    title.innerText = isUpgrade ? "تایید ارتقای سرباز" : "تایید ایجاد سرباز";
+    
+    if (isUpgrade) {
+        if (gameState.stone < cost) { showNotification("سنگ کافی ندارید!", "warning"); return; }
+        question.innerHTML = `آیا از ارتقای <strong>${count} سرباز</strong> مطمئن هستید؟<br>این کار <strong>${cost} سنگ</strong> هزینه دارد.`;
+        document.getElementById('barracksConfirmYes').onclick = () => {
+            gameState.stone -= cost;
+            gameState.training = { active: true, remaining: count, targetTime: Date.now() + 10000, isUpgrade: true };
+            modal.style.display = 'none';
+            updateUI();
+            updateBarracksUI();
+        };
+    } else {
+        if (gameState.wood < cost) { showNotification("چوب کافی ندارید!", "warning"); return; }
+        question.innerHTML = `آیا از ایجاد <strong>${count} سرباز جدید</strong> مطمئن هستید؟<br>این کار <strong>${cost} چوب</strong> هزینه دارد.`;
+        document.getElementById('barracksConfirmYes').onclick = () => {
+            gameState.wood -= cost;
+            gameState.training = { active: true, remaining: count, targetTime: Date.now() + 10000, isUpgrade: false };
+            modal.style.display = 'none';
+            updateUI();
+            updateBarracksUI();
+        };
+    }
+    
+    modal.style.display = 'block';
+    setTimeout(() => { modal.style.opacity = 1; modal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
+}
 
 function initGame() {
     bgMusic = new Audio('music.mp3'); bgMusic.volume = 0.4; 
@@ -778,14 +889,21 @@ function initGame() {
         
         <div style="display: flex; justify-content: space-around; padding: 10px;">
             <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); flex: 1; margin: 0 5px;">
-                <img src="soldier_lvl1.png" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
+                <img src="soldier_lvl1.png" style="width: 60px; height: 60px; object-fit: cover; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333;">
                 <div style="color: #f5e6c8; font-size: 0.9rem;">سربازان سطح ۱</div>
                 <div id="barracksLvl1Count" style="color: #f4d03f; font-size: 1.5rem; font-weight: bold; margin-top: 5px;">0</div>
             </div>
             <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); flex: 1; margin: 0 5px;">
-                <img src="soldier_lvl2.png" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
+                <img src="soldier_lvl2.png" style="width: 60px; height: 60px; object-fit: cover; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333;">
                 <div style="color: #f5e6c8; font-size: 0.9rem;">سربازان سطح ۲</div>
                 <div id="barracksLvl2Count" style="color: #f4d03f; font-size: 1.5rem; font-weight: bold; margin-top: 5px;">0</div>
+            </div>
+        </div>
+
+        <div id="barracksProgressBarContainer" style="display: none; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin: 0 10px 15px 10px; text-align: center;">
+            <div id="barracksProgressText" style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 8px;">در حال ایجاد سرباز</div>
+            <div style="width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden;">
+                <div id="barracksProgressBar" style="width: 0%; height: 100%; background: #f4d03f; transition: width 0.1s linear;"></div>
             </div>
         </div>
 
@@ -798,9 +916,25 @@ function initGame() {
     const closeBarracksModal = document.getElementById('closeBarracksModal'); 
     if (closeBarracksModal) closeBarracksModal.onclick = () => { barracksModal.style.display = 'none'; barracksModal.style.opacity = 0; barracksModal.style.transform = 'translate(-50%, -50%) scale(0.9)'; };
     const btnCreateSoldier = document.getElementById('btnCreateSoldier');
-    if (btnCreateSoldier) btnCreateSoldier.onclick = () => { showNotification("سیستم ایجاد سرباز به زودی فعال می‌شود!", "info"); };
+    if (btnCreateSoldier) btnCreateSoldier.onclick = () => {
+        const max = gameState.population - 1;
+        if (max <= 0) { showNotification("جمعیت کافی برای ایجاد سرباز ندارید!", "warning"); return; }
+        openBarracksSelect(false, max);
+    };
     const btnUpgradeSoldier = document.getElementById('btnUpgradeSoldier');
-    if (btnUpgradeSoldier) btnUpgradeSoldier.onclick = () => { showNotification("سیستم ارتقای سرباز به زودی فعال می‌شود!", "info"); };
+    if (btnUpgradeSoldier) btnUpgradeSoldier.onclick = () => {
+        if (gameState.soldiersLvl1 <= 0) { showNotification("شما هیچ سرباز سطح ۱‌ای برای ارتقا ندارید!", "error"); return; }
+        openBarracksSelect(true, gameState.soldiersLvl1);
+    };
+
+    // === ایجاد مودال‌های انتخاب و تایید پادگان ===
+    const barracksSelectHTML = `<div id="barracksSelectModal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 350px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;"><h3 id="barracksSelectTitle" style="color: #f4d03f; margin-bottom: 5px;"></h3><p id="barracksSelectQuestion" style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;"></p><div id="barracksSelectBtns" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px;"></div><button id="barracksSelectCancel" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer;">انصراف</button></div>`;
+    if (gameScreen) gameScreen.insertAdjacentHTML('beforeend', barracksSelectHTML);
+    const barracksSelectCancel = document.getElementById('barracksSelectCancel'); if (barracksSelectCancel) barracksSelectCancel.onclick = () => { const m = document.getElementById('barracksSelectModal'); m.style.display = 'none'; m.style.opacity = 0; };
+
+    const barracksConfirmHTML = `<div id="barracksConfirmModal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 300px; background: rgba(10,14,26,0.98); padding: 20px; border-radius: 12px; border: 1px solid #f4d03f; z-index: 1000; display: none; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8); opacity: 0; transition: 0.3s;"><h3 id="barracksConfirmTitle" style="color: #f4d03f; margin-bottom: 15px;"></h3><p id="barracksConfirmQuestion" style="color: #e8dcc8; margin-bottom: 20px;"></p><div style="display: flex; gap: 10px;"><button id="barracksConfirmYes" style="flex:1; padding:10px; background:linear-gradient(145deg, #f4d03f, #c9a84c); border:none; border-radius:6px; color:#1a1a2e; font-weight:700; cursor:pointer;">بله، انجام بده</button><button id="barracksConfirmCancel" style="flex:1; padding:10px; background:transparent; border:1px solid #8a7a6a; border-radius:6px; color:#f5e6c8; cursor:pointer;">انصراف</button></div></div>`;
+    if (gameScreen) gameScreen.insertAdjacentHTML('beforeend', barracksConfirmHTML);
+    const barracksConfirmCancel = document.getElementById('barracksConfirmCancel'); if (barracksConfirmCancel) barracksConfirmCancel.onclick = () => { const m = document.getElementById('barracksConfirmModal'); m.style.display = 'none'; m.style.opacity = 0; };
 
     // === ایجاد مودال مجلس و احزاب ===
     const councilModal = document.createElement('div'); 
