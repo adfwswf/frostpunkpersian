@@ -176,7 +176,7 @@ function continueGame() {
     html += `</div><button id="closeLoadModal" style="padding: 10px; background: transparent; border: 1px solid #8a7a6a; border-radius: 6px; color: #f5e6c8; cursor: pointer; font-family: 'Vazirmatn', sans-serif;">بستن</button></div>`;
     modal.innerHTML = html; modal.style.display = 'flex'; const closeLoadModal = document.getElementById('closeLoadModal'); if (closeLoadModal) closeLoadModal.onclick = () => { modal.style.display = 'none'; };
     document.querySelectorAll('.load-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (loadGame(name)) { modal.style.display = 'none'; showStoryScreen(); startActualGame(); } }; });
-    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name; if (!hasSavedGame()) { modal.style.display = 'none'; const continueBtn = document.getElementById('btnContinueHero'); if (continueBtn) continueBtn.remove(); } else { continueGame(); } } }; });
+    document.querySelectorAll('.delete-save-btn').forEach(btn => { btn.onclick = () => { let name = btn.getAttribute('data-name'); if (confirm("آیا از حذف این بازی مطمئن هستید؟")) { deleteGame(name); if (!hasSavedGame()) { modal.style.display = 'none'; const continueBtn = document.getElementById('btnContinueHero'); if (continueBtn) continueBtn.remove(); } else { continueGame(); } } }; });
 }
 
 window.startTutorial = function(val) { gameState.tutorialStep = val ? 1 : 0; const box = document.getElementById('tutorialBox'); if (!val && box) box.style.display = 'none'; if (val) updateTutorialBox(); }
@@ -931,7 +931,7 @@ function initGame() {
     };
     const btnUpgradeSoldier = document.getElementById('btnUpgradeSoldier');
     if (btnUpgradeSoldier) btnUpgradeSoldier.onclick = () => {
-        if (gameState.soldiersLvl1 <= 0) { showNotification("شما هیچ سرباز سطح ۱‌ای برای ارتقا ندارید!", "error"); return; }
+        if (gameState.soldiersLvl1 <= 0) { showNotification("شما هیچ سرباز سطح یکی برای ارتقا ندارید", "error"); return; }
         openBarracksSelect(true, gameState.soldiersLvl1);
     };
 
