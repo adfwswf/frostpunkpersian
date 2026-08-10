@@ -512,7 +512,10 @@ function handleMapClick() {
         return; 
     }
 
-    if (isHouse && !gameState.isPlacing) { let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; }
+    if (isHouse && !gameState.isPlacing) { 
+        const cm = document.getElementById('councilModal'); if (cm) { cm.style.display = 'none'; cm.style.opacity = 0; cm.style.transform = 'translate(-50%, -50%) scale(0.9)'; }
+        let house = gameState.HOUSE_HEXES.find(h => h.q === target.q && h.r === target.r); let isMainHouse = (house.q === 0 && house.r === 0); let maxTransferable = isMainHouse ? house.pop - 1 : house.pop; if (maxTransferable > 0) { if (gameState.tutorialStep === 14 || gameState.tutorialStep === 0) { gameState.moveSource = target; openMovePopPanel(maxTransferable); if (gameState.tutorialStep === 14) { gameState.tutorialStep = 15; updateTutorialBox(); } } else if (gameState.tutorialStep > 0) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); } } else { showNotification("آدمی برای انتقال در این خانه نیست!", "info"); } return; 
+    }
     
     if (isLocked && !isUnlocked && !isHouse && !isPP && !isCouncil && !isBarracks && !isOccupied) { 
         const neighbors = [ { q: target.q + 1, r: target.r }, { q: target.q - 1, r: target.r }, { q: target.q, r: target.r + 1 }, { q: target.q, r: target.r - 1 }, { q: target.q + 1, r: target.r - 1 }, { q: target.q - 1, r: target.r + 1 } ]; 
@@ -665,6 +668,12 @@ function initGame() {
             #story-screen button { padding: 10px 20px !important; font-size: 0.95rem !important; width: auto !important; min-width: 150px; }
             .floating-panel { width: 400px !important; }
         }
+
+        /* === نوار طلایی دور پنجره‌های شناور === */
+        .floating-panel {
+            border: 1px solid #f4d03f !important;
+            box-shadow: 0 0 15px rgba(244,208,63,0.2) !important;
+        }
         
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
@@ -676,10 +685,22 @@ function initGame() {
             #unlockModal, #expeditionResultModal, #migrantModal { width: 90% !important; }
             #rightPanelContainer { right: 10px !important; width: 160px !important; top: 140px !important; }
             #movePopBtns button { width: 45px !important; height: 45px !important; font-size: 1rem !important; }
-            .floating-panel { width: 92% !important; max-height: 75vh !important; border-radius: 12px !important; }
-            .panel-header { padding: 8px 12px !important; }
-            .panel-header h3 { font-size: 0.85rem !important; }
-            .panel-body { padding: 8px !important; }
+            .floating-panel { 
+                width: 92% !important; 
+                max-height: 60vh !important; 
+                border-radius: 12px !important; 
+                border: 1px solid #f4d03f !important;
+                overflow: hidden !important; 
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            .panel-body { 
+                padding: 8px !important; 
+                overflow-y: auto !important; 
+                -webkit-overflow-scrolling: touch !important; 
+                flex: 1 !important;
+            }
+            .panel-header { flex-shrink: 0 !important; }
             .build-item-new { padding: 8px !important; margin-bottom: 8px !important; gap: 8px !important; }
             .build-info-text { gap: 2px !important; }
             .build-name { font-size: 0.85rem !important; }
@@ -735,31 +756,31 @@ function initGame() {
             <button id="closeCouncilModal" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
         </div>
         
-        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_steel.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
                 <div style="color: #e74c3c; font-weight: 700; font-size: 1rem;">سپاه پولاد</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: جنگ</div>
-                <button class="view-members-btn" data-party="سپاه پولاد" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار جنگ</div>
             </div>
+            <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
         </div>
 
-        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_reconstruction.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
                 <div style="color: #27ae60; font-weight: 700; font-size: 1rem;">دیوان ابادانی</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: ساخت و ساز</div>
-                <button class="view-members-btn" data-party="دیوان ابادانی" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار ساخت و ساز</div>
             </div>
+            <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
         </div>
 
-        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_earthshakers.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
                 <div style="color: #3498db; font-weight: 700; font-size: 1rem;">انجمن زمین‌شکافان</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار: اکتشاف</div>
-                <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="margin-top: 5px; padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif;">مشاهده اعضا</button>
+                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار اکتشاف</div>
             </div>
+            <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
         </div>
     `;
     if (gameScreen) gameScreen.appendChild(councilModal); 
@@ -799,8 +820,18 @@ function initGame() {
     const btnMute = document.getElementById('btnMute'); if (btnMute) btnMute.onclick = () => { if (bgMusic.volume > 0) { bgMusic.volume = 0; if (volumeSlider) volumeSlider.value = 0; btnMute.innerText = LANG[gameState.currentLang].unmute; } else { bgMusic.volume = 0.4; if (volumeSlider) volumeSlider.value = 0.4; btnMute.innerText = LANG[gameState.currentLang].mute; } };
     const langSelect = document.getElementById('langSelect'); if (langSelect) langSelect.onchange = (e) => { applyLang(e.target.value); showNotification(LANG[gameState.currentLang].langChanged, "info"); };
     updateBindTexts(); const bindUp = document.getElementById('bindUp'); if (bindUp) bindUp.onclick = () => { gameState.rebindingKey = 'up'; bindUp.innerText = '...'; }; const bindDown = document.getElementById('bindDown'); if (bindDown) bindDown.onclick = () => { gameState.rebindingKey = 'down'; bindDown.innerText = '...'; }; const bindLeft = document.getElementById('bindLeft'); if (bindLeft) bindLeft.onclick = () => { gameState.rebindingKey = 'left'; bindLeft.innerText = '...'; }; const bindRight = document.getElementById('bindRight'); if (bindRight) bindRight.onclick = () => { gameState.rebindingKey = 'right'; bindRight.innerText = '...'; };
+    
+    const closeCouncilModalFn = () => { const cm = document.getElementById('councilModal'); if (cm) { cm.style.display = 'none'; cm.style.opacity = 0; cm.style.transform = 'translate(-50%, -50%) scale(0.9)'; } };
     const btnBuild = document.getElementById('btnBuild');
-    if (btnBuild) btnBuild.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 2 && gameState.tutorialStep !== 10) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelBuild'); if (panelBuild) panelBuild.classList.add('panel-open'); if (gameState.tutorialStep === 2) { gameState.tutorialStep = 3; updateTutorialBox(); } else if (gameState.tutorialStep === 10) { gameState.tutorialStep = 11; updateTutorialBox(); } };
+    if (btnBuild) btnBuild.onclick = () => { 
+        closeCouncilModalFn();
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 2 && gameState.tutorialStep !== 10) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
+        if (panelBuild.classList.contains('panel-open') && (gameState.tutorialStep === 0 || gameState.tutorialStep === -1)) {
+            panelBuild.classList.remove('panel-open'); return;
+        }
+        closeAllPanels('panelBuild'); if (panelBuild) panelBuild.classList.add('panel-open'); 
+        if (gameState.tutorialStep === 2) { gameState.tutorialStep = 3; updateTutorialBox(); } else if (gameState.tutorialStep === 10) { gameState.tutorialStep = 11; updateTutorialBox(); } 
+    };
     const closeBuildPanel = document.getElementById('closeBuildPanel'); if (closeBuildPanel) closeBuildPanel.onclick = () => { if (panelBuild) panelBuild.classList.remove('panel-open'); };
     const txtBuildBtn = document.getElementById('txtBuildBtn');
     if (txtBuildBtn) txtBuildBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 3) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } gameState.isPlacing = true; gameState.placingType = 'house'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); if (gameState.tutorialStep === 3) { gameState.tutorialStep = 4; updateTutorialBox(); } };
@@ -809,9 +840,25 @@ function initGame() {
     const selectBarracks = document.getElementById('selectBarracks');
     if (selectBarracks) selectBarracks.onclick = () => { gameState.isPlacing = true; gameState.placingType = 'barracks'; gameState.placingSelectedHex = null; if (panelBuild) panelBuild.classList.remove('panel-open'); updateActionTracker(); };
     
-    if (exploreBtn) exploreBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelExplore'); if (panelExplore) panelExplore.classList.add('panel-open'); if (gameState.tutorialStep === 5) { gameState.tutorialStep = 6; updateTutorialBox(); } };
+    if (exploreBtn) exploreBtn.onclick = () => { 
+        closeCouncilModalFn();
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 5) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
+        if (panelExplore.classList.contains('panel-open') && (gameState.tutorialStep === 0 || gameState.tutorialStep === -1)) {
+            panelExplore.classList.remove('panel-open'); return;
+        }
+        closeAllPanels('panelExplore'); if (panelExplore) panelExplore.classList.add('panel-open'); 
+        if (gameState.tutorialStep === 5) { gameState.tutorialStep = 6; updateTutorialBox(); } 
+    };
     const closeExplorePanel = document.getElementById('closeExplorePanel'); if (closeExplorePanel) closeExplorePanel.onclick = () => { if (panelExplore) panelExplore.classList.remove('panel-open'); };
-    if (requestsBtn) requestsBtn.onclick = () => { if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } closeAllPanels('panelRequests'); if (panelRequests) panelRequests.classList.add('panel-open'); };
+    
+    if (requestsBtn) requestsBtn.onclick = () => { 
+        closeCouncilModalFn();
+        if (gameState.tutorialStep > 0 && gameState.tutorialStep < 17) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
+        if (panelRequests.classList.contains('panel-open')) {
+            panelRequests.classList.remove('panel-open'); return;
+        }
+        closeAllPanels('panelRequests'); if (panelRequests) panelRequests.classList.add('panel-open'); 
+    };
     const openDispatchModal = (regionName) => { 
         if (gameState.tutorialStep > 0 && gameState.tutorialStep !== 6) { showNotification("لطفاً طبق آموزش پیش برو!", "warning"); return; } 
         if (gameState.tutorialStep === 6 && regionName !== 'تخت جمشید') { showNotification("در آموزش فقط تخت جمشید رو انتخاب کن!", "warning"); return; } 
