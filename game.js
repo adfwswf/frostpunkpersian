@@ -691,10 +691,10 @@ function showExpeditionResult(exp, res) {
     html += `<div style="margin-bottom:10px; border-top:1px solid #333; padding-top:10px;"><strong style="color:#f4d03f;">${t.resultRes}</strong><br>`; 
     
     let foundRes = false, resList = ''; 
-    if (res.wood > 0) { resList += `<span style="font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;">🪵</span> ${t.wood}: ${res.wood}<br>`; foundRes = true; } 
-    if (res.stone > 0) { resList += `<span style="font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;">🪨</span> ${t.stone}: ${res.stone}<br>`; foundRes = true; } 
-    if (res.food > 0) { resList += `<span style="font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;">🍖</span> ${t.food}: ${res.food}<br>`; foundRes = true; } 
-    if (res.fuel > 0) { resList += `<span style="font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;">🔥</span> ${t.fuel}: ${res.fuel}<br>`; foundRes = true; } 
+    if (res.wood > 0) { resList += `${t.wood}: ${res.wood}<br>`; foundRes = true; } 
+    if (res.stone > 0) { resList += `${t.stone}: ${res.stone}<br>`; foundRes = true; } 
+    if (res.food > 0) { resList += `${t.food}: ${res.food}<br>`; foundRes = true; } 
+    if (res.fuel > 0) { resList += `${t.fuel}: ${res.fuel}<br>`; foundRes = true; } 
     
     if (!foundRes) { html += `${t.resultNone}<br>`; } else { html += resList; } 
     html += `</div>`; 
@@ -755,7 +755,7 @@ function openBarracksConfirm(isUpgrade, count) {
     title.innerText = isUpgrade ? "تایید ارتقای سرباز" : "تایید ایجاد سرباز";
     
     if (isUpgrade) {
-        question.innerHTML = `آیا از ارتقای ${count} سرباز مطمئن هستید؟<br>این کار 🪨 ${cost} سنگ هزینه دارد.`;
+        question.innerHTML = `آیا از ارتقای ${count} سرباز مطمئن هستید؟<br>این کار ${cost} سنگ هزینه دارد.`;
         document.getElementById('barracksConfirmYes').onclick = () => {
             if (gameState.stone < cost) { showNotification("سنگ کافی نداری!", "error"); return; }
             gameState.stone -= cost;
@@ -766,7 +766,7 @@ function openBarracksConfirm(isUpgrade, count) {
             updateBarracksUI();
         };
     } else {
-        question.innerHTML = `آیا از ایجاد ${count} سرباز جدید مطمئن هستید؟<br>این کار 🪵 ${cost} چوب هزینه دارد.`;
+        question.innerHTML = `آیا از ایجاد ${count} سرباز جدید مطمئن هستید؟<br>این کار ${cost} چوب هزینه دارد.`;
         document.getElementById('barracksConfirmYes').onclick = () => {
             if (gameState.wood < cost) { showNotification("چوب کافی نداری!", "error"); return; }
             if (!removeTroopsFromHouses(count)) { showNotification("جمعیت کافی نداری!", "error"); return; }
@@ -838,7 +838,7 @@ function initGame() {
         @media (max-width: 768px) {
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
             #dispatchTroopsModal { width: 90% !important; padding: 15px !important; }
-            #dispatchTroopsBtns button { width: 50px !important; height: 35px !important; font-size: 1.2rem !important; margin: 5px !important; }
+            #dispatchTroopsBtns button { width: 50px !important; height: 50px !important; font-size: 1.2rem !important; margin: 5px !important; }
             #tutorialBox { width: 95% !important; padding: 15px !important; bottom: 60px !important; gap: 10px !important; }
             #tutorialBox img { width: 60px !important; height: 60px !important; }
             #tutorialBox p { font-size: 0.8rem !important; line-height: 1.5 !important; }
@@ -885,11 +885,6 @@ function initGame() {
             .bottom-btn .btn-icon-large { font-size: 1.1rem !important; }
             .bottom-btn .btn-label { font-size: 0.5rem !important; }
             #map-container { bottom: 45px !important; }
-        }
-        
-        /* === دسکتاپ: دکمه‌های اعزام نیرو جمع‌تر === */
-        @media (min-width: 769px) {
-            #dispatchTroopsBtns button { width: 40px !important; height: 30px !important; font-size: 1rem !important; margin: 4px !important; }
         }
     `;
     document.head.appendChild(style);
@@ -1017,7 +1012,7 @@ function initGame() {
         };
     });
 
-    const panelExplore = document.createElement('div'); panelExplore.className = 'floating-panel'; panelExplore.id = 'panelExplore'; panelExplore.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;"><h3 id="txtExploreTitle" style="font-size:1rem; color:#f4d03f;">اکتشاف</h3><button id="closeExplorePanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px; max-height: 400px; overflow-y: auto;"><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">کویر لوت</div><div class="region-risk" data-val="۰ تا ۱۰۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۱۰۰ درصد</div><div class="region-reward" data-val="۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت</div><button id="dispatchLut" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">آبشار لاتون</div><div class="region-risk" data-val="۰ تا ۷۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۷۰ درصد</div><div class="region-reward" data-val="۱۰ غذا، ۲۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ غذا، ۲۰ سنگ</div><button id="dispatchLaton" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">تخت جمشید</div><div class="region-risk" data-val="۰ تا ۴۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۴۰ درصد</div><div class="region-reward" data-val="۱۰ چوب، ۱۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ چوب، ۱۰ سنگ</div><button id="dispatchPersepolis" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 12px 16px; font-size: 1rem;">اعزام نیرو</button></div></div>`; if (gameScreen) gameScreen.appendChild(panelExplore);
+    const panelExplore = document.createElement('div'); panelExplore.className = 'floating-panel'; panelExplore.id = 'panelExplore'; panelExplore.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;"><h3 id="txtExploreTitle" style="font-size:1rem; color:#f4d03f;">اکتشاف</h3><button id="closeExplorePanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" style="padding:16px; max-height: 400px; overflow-y: auto;"><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">کویر لوت</div><div class="region-risk" data-val="۰ تا ۱۰۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۱۰۰ درصد</div><div class="region-reward" data-val="۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۳۰ چوب، ۳۰ سنگ، ۲۰ غذا، ۵ سوخت</div><button id="dispatchLut" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 8px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">آبشار لاتون</div><div class="region-risk" data-val="۰ تا ۷۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۷۰ درصد</div><div class="region-reward" data-val="۱۰ غذا، ۲۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ غذا، ۲۰ سنگ</div><button id="dispatchLaton" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 8px 16px; font-size: 1rem;">اعزام نیرو</button></div><div class="build-item-new" style="display:flex; flex-direction:column; gap:8px; padding:12px;"><div style="font-size:1.1rem; font-weight:700; color:#f5e6c8;">تخت جمشید</div><div class="region-risk" data-val="۰ تا ۴۰ درصد" style="font-size:0.8rem; color:#aaa;">مقدار تلفات: ۰ تا ۴۰ درصد</div><div class="region-reward" data-val="۱۰ چوب، ۱۰ سنگ" style="font-size:0.8rem; color:#f4d03f;">پاداش هر بازگشته: ۱۰ چوب، ۱۰ سنگ</div><button id="dispatchPersepolis" class="build-btn dispatch-text" style="width:100%; margin-top:10px; padding: 8px 16px; font-size: 1rem;">اعزام نیرو</button></div></div>`; if (gameScreen) gameScreen.appendChild(panelExplore);
     const panelRequests = document.createElement('div'); panelRequests.className = 'floating-panel'; panelRequests.id = 'panelRequests'; panelRequests.innerHTML = `<div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;"><h3 style="font-size:1rem; color:#f4d03f;">درخواست‌ها</h3><button id="closeRequestsPanel" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button></div><div class="panel-body" id="requestTrackerBody" style="padding:16px; max-height: 400px; overflow-y: auto;"><p class="no-req-msg" style="color: #aaa; text-align: center; font-size: 0.9rem;">در حال حاضر درخواستی وجود ندارد.</p></div>`; if (gameScreen) gameScreen.appendChild(panelRequests); const closeRequestsPanel = document.getElementById('closeRequestsPanel'); if (closeRequestsPanel) closeRequestsPanel.onclick = () => panelRequests.classList.remove('panel-open');
     
     const panelBuild = document.getElementById('panelBuild'); 
@@ -1097,11 +1092,10 @@ function initGame() {
         const btnsDiv = document.getElementById('dispatchTroopsBtns'); if(btnsDiv) btnsDiv.innerHTML = '';
         const isMobileView = window.innerWidth <= 768;
         const btnSize = isMobileView ? 50 : 40;
-        const btnHeight = isMobileView ? 35 : 30;
         const btnFontSize = isMobileView ? '1.2rem' : '1rem';
         const btnMargin = isMobileView ? 5 : 4;
         for(let i=1; i<=maxTroops; i++) { 
-            let b = document.createElement('button'); b.innerText = i; b.style.cssText = `width: ${btnSize}px; height: ${btnHeight}px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: ${btnFontSize}; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: ${btnMargin}px;`; b.onmouseover = () => b.style.background = '#34495e'; b.onmouseout = () => b.style.background = '#2c3e50'; b.onclick = () => { if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; startExpedition(gameState.selectedRegion, i); dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; if (panelExplore) panelExplore.classList.remove('panel-open'); }; if(btnsDiv) btnsDiv.appendChild(b); } dispatchTroopsModal.style.display = 'block'; setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); 
+            let b = document.createElement('button'); b.innerText = i; b.style.cssText = `width: ${btnSize}px; height: ${btnSize}px; background: #2c3e50; color: #fff; border: 2px solid #f4d03f; border-radius: 8px; cursor: pointer; font-size: ${btnFontSize}; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; margin: ${btnMargin}px;`; b.onmouseover = () => b.style.background = '#34495e'; b.onmouseout = () => b.style.background = '#2c3e50'; b.onclick = () => { if (gameState.tutorialStep === 7 && i !== 1) { showNotification("در آموزش باید ۱ نفر را اعزام کنی!", "warning"); return; } if (gameState.tutorialStep === 7) gameState.tutorialStep = 7.5; startExpedition(gameState.selectedRegion, i); dispatchTroopsModal.style.display = 'none'; dispatchTroopsModal.style.opacity = 0; if (panelExplore) panelExplore.classList.remove('panel-open'); }; if(btnsDiv) btnsDiv.appendChild(b); } dispatchTroopsModal.style.display = 'block'; setTimeout(() => { dispatchTroopsModal.style.opacity = 1; dispatchTroopsModal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10); 
     };
     const dispatchLut = document.getElementById('dispatchLut'); if (dispatchLut) dispatchLut.onclick = () => openDispatchModal('کویر لوت');
     const dispatchLaton = document.getElementById('dispatchLaton'); if (dispatchLaton) dispatchLaton.onclick = () => openDispatchModal('آبشار لاتون');
