@@ -262,12 +262,14 @@ function updateActionTracker() {
     lastTrackerState = currentState;
     const tracker = document.getElementById('actionTracker');
     if (!tracker) return;
+    
+    // کادر پیام انتقال یا ساخت، به صورت یک‌خطی و فشرده برای موبایل
     let html = '';
     if (currentState === 'move') {
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 6px; text-align: center;">${gameState.moveAmount} نفر در حال انتقال هستند</div><button id="cancelMoveTrackBtn" style="width: 100%; padding: 6px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.8rem;">انصراف</button></div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif; display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="color: #f4d03f; font-size: 0.8rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${gameState.moveAmount} نفر در انتقال</div><button id="cancelMoveTrackBtn" style="padding: 4px 8px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.75rem; flex-shrink: 0;">انصراف</button></div>`;
     } else if (currentState.startsWith('build_')) {
         const buildingName = gameState.placingType === 'powerplant' ? 'نیروگاه' : (gameState.placingType === 'barracks' ? 'پادگان' : 'خانه');
-        html = `<div style="background: rgba(10,14,26,0.9); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif;"><div style="color: #f4d03f; font-size: 0.9rem; margin-bottom: 6px; text-align: center;">در حال انتخاب موقعیت ${buildingName}</div><button id="cancelBuildTrackBtn" style="width: 100%; padding: 6px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.8rem;">انصراف</button></div>`;
+        html = `<div style="background: rgba(10,14,26,0.9); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif; display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="color: #f4d03f; font-size: 0.8rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ساخت ${buildingName}</div><button id="cancelBuildTrackBtn" style="padding: 4px 8px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.75rem; flex-shrink: 0;">انصراف</button></div>`;
     }
     tracker.style.display = 'flex'; tracker.innerHTML = html;
     const cancelMoveBtn = document.getElementById('cancelMoveTrackBtn');
@@ -401,9 +403,12 @@ function drawMap() {
         let imgToDraw = gameState.placingType === 'powerplant' ? powerplantImg : (gameState.placingType === 'barracks' ? barracksImg : houseImg); 
         let currentScale = gameState.placingType === 'powerplant' ? POWERPLANT_SCALE : (gameState.placingType === 'barracks' ? BARRACKS_SCALE : HOUSE_SCALE); 
         let currentOffsetY = gameState.placingType === 'powerplant' ? POWERPLANT_OFFSET_Y : (gameState.placingType === 'barracks' ? BARRACKS_OFFSET_Y : HOUSE_OFFSET_Y);
+        
+        const isMobile = window.innerWidth <= 768;
         let targetHex = null;
-        if (gameState.placingSelectedHex) { targetHex = gameState.placingSelectedHex; } 
-        else {
+        if (gameState.placingSelectedHex) { 
+            targetHex = gameState.placingSelectedHex; 
+        } else if (!isMobile) { // Only show hover ghost on Desktop. On mobile, wait for first click.
             targetHex = getHoveredHex(gameState.mouseX, gameState.mouseY);
             if (targetHex) {
                 let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHex.q && h.r === targetHex.r);
@@ -885,6 +890,14 @@ function initGame() {
             .bottom-btn .btn-icon-large { font-size: 1.1rem !important; }
             .bottom-btn .btn-label { font-size: 0.5rem !important; }
             #map-container { bottom: 45px !important; }
+            
+            /* === استایل‌دهی اختصاصی مدل مجلس در موبایل برای جلوگیری از شکستن خطوط === */
+            #councilModal { width: 92% !important; max-width: 350px !important; padding: 15px !important; gap: 10px !important; }
+            .party-row { gap: 8px !important; padding: 8px !important; }
+            .party-img { width: 40px !important; height: 40px !important; }
+            .party-name { font-size: 0.8rem !important; }
+            .party-desc { font-size: 0.65rem !important; }
+            .view-members-btn { padding: 3px 6px !important; font-size: 0.65rem !important; }
         }
     `;
     document.head.appendChild(style);
@@ -975,31 +988,31 @@ function initGame() {
             <button id="closeCouncilModal" style="background:none; border:none; color:#8a9aaa; font-size:1.2rem; cursor:pointer;">✕</button>
         </div>
         
-        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
-            <img src="party_steel.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
-            <div style="flex: 1; text-align: right;">
-                <div style="color: #e74c3c; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">سپاه پولاد</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار جنگ</div>
+        <div class="party-row" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 10px;">
+            <img src="party_steel.png" class="party-img" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right; min-width: 0;">
+                <div class="party-name" style="color: #e74c3c; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">سپاه پولاد</div>
+                <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار جنگ</div>
             </div>
-            <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
+            <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
-            <img src="party_reconstruction.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
-            <div style="flex: 1; text-align: right;">
-                <div style="color: #27ae60; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">دیوان ابادانی</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار ساخت و ساز</div>
+        <div class="party-row" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 10px;">
+            <img src="party_reconstruction.png" class="party-img" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right; min-width: 0;">
+                <div class="party-name" style="color: #27ae60; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">دیوان ابادانی</div>
+                <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار ساخت و ساز</div>
             </div>
-            <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
+            <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
-            <img src="party_earthshakers.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
-            <div style="flex: 1; text-align: right;">
-                <div style="color: #3498db; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">انجمن زمین‌شکافان</div>
-                <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار اکتشاف</div>
+        <div class="party-row" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 10px;">
+            <img src="party_earthshakers.png" class="party-img" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
+            <div style="flex: 1; text-align: right; min-width: 0;">
+                <div class="party-name" style="color: #3498db; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">انجمن زمین‌شکافان</div>
+                <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار اکتشاف</div>
             </div>
-            <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
+            <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
         </div>
     `;
     if (gameScreen) gameScreen.appendChild(councilModal); 
