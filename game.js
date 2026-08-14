@@ -262,8 +262,6 @@ function updateActionTracker() {
     lastTrackerState = currentState;
     const tracker = document.getElementById('actionTracker');
     if (!tracker) return;
-    
-    // کادر پیام انتقال یا ساخت، به صورت یک‌خطی و فشرده برای موبایل
     let html = '';
     if (currentState === 'move') {
         html = `<div style="background: rgba(10,14,26,0.9); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(244,208,63,0.3); margin-bottom: 5px; font-family: 'Vazirmatn', sans-serif; display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="color: #f4d03f; font-size: 0.8rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${gameState.moveAmount} نفر در انتقال</div><button id="cancelMoveTrackBtn" style="padding: 4px 8px; background: #e74c3c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color:#fff; font-size: 0.75rem; flex-shrink: 0;">انصراف</button></div>`;
@@ -408,7 +406,7 @@ function drawMap() {
         let targetHex = null;
         if (gameState.placingSelectedHex) { 
             targetHex = gameState.placingSelectedHex; 
-        } else if (!isMobile) { // Only show hover ghost on Desktop. On mobile, wait for first click.
+        } else if (!isMobile) { 
             targetHex = getHoveredHex(gameState.mouseX, gameState.mouseY);
             if (targetHex) {
                 let tIsHouse = gameState.HOUSE_HEXES.some(h => h.q === targetHex.q && h.r === targetHex.r);
@@ -805,7 +803,7 @@ function initGame() {
         #game-screen, #game-screen * { font-family: 'Vazirmatn', sans-serif !important; }
         button, input, select, textarea { font-family: 'Vazirmatn', sans-serif !important; }
         
-        /* === زیباسازی اسکرول‌بار خاکستری با فاصله === */
+        /* زیباسازی اسکرول‌بار در دسکتاپ */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; margin: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(136, 136, 136, 0.7); border-radius: 10px; }
@@ -818,15 +816,27 @@ function initGame() {
         .top-bar-center { position: relative; padding: 0 20px !important; justify-content: center !important; flex: 1 !important; }
         .resource-icon { font-size: 0.9rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
         
-        /* === استایل خط جداکننده و دیوایدرها === */
         .panel-header { margin: 0 10px !important; border-bottom: 1px solid rgba(201,168,76,0.15) !important; }
         .resource-divider { width: 1px !important; min-height: 15px !important; height: 15px !important; background: rgba(255,255,255,0.2) !important; margin: 0 5px !important; flex-shrink: 0; }
         
         .mobile-line-break { display: none !important; }
         
-        .nav-cta { padding: 8px 15px !important; border-radius: 6px !important; font-size: 0.9rem !important; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+        /* تثبیت دکمه نصب بازی در هدر برای جلوگیری از تغییر شکل */
+        .nav-cta { 
+            background: linear-gradient(135deg, #8e44ad, #9b59b6) !important; 
+            border: 1px solid #9b59b6 !important; 
+            color: #fff !important; 
+            border-radius: 4px !important; 
+            font-weight: 700 !important; 
+            cursor: pointer !important; 
+            transition: all 0.3s !important; 
+            display: inline-flex !important; 
+            align-items: center !important; 
+            justify-content: center !important; 
+            text-decoration: none !important; 
+            font-family: 'Vazirmatn', sans-serif !important; 
+        }
         
-        /* === تنظیمات لپ‌تاپ و دسکتاپ === */
         @media (min-width: 769px) {
             .floating-panel { width: 400px !important; max-height: 80vh !important; display: flex !important; flex-direction: column !important; }
             .panel-body { overflow-y: auto !important; flex: 1 !important; }
@@ -834,13 +844,37 @@ function initGame() {
             #actionTracker { display: none !important; }
         }
 
-        /* === نوار طلایی دور پنجره‌های شناور === */
         .floating-panel {
             border: 1px solid #f4d03f !important;
             box-shadow: 0 0 15px rgba(244,208,63,0.2) !important;
         }
         
         @media (max-width: 768px) {
+            /* حذف اسکرول‌بار در موبایل */
+            * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+            *::-webkit-scrollbar { display: none !important; }
+            
+            /* اصلاح صفحه داستان برای دیده شدن دکمه شروع */
+            #story-screen { 
+                justify-content: flex-start !important; 
+                padding: 80px 15px 20px 15px !important; 
+                overflow-y: auto !important; 
+            }
+            .story-container { 
+                max-height: none !important; 
+                margin-bottom: 20px !important; 
+                padding: 20px !important;
+            }
+            
+            .nav-cta { 
+                left: 10px !important; 
+                top: 10px !important; 
+                transform: none !important; 
+                height: 35px !important; 
+                padding: 0 15px !important; 
+                font-size: 13px !important; 
+            }
+            
             #pauseModal > div, #settingsModal > div { width: 95% !important; padding: 20px !important; }
             #dispatchTroopsModal { width: 90% !important; padding: 15px !important; }
             #dispatchTroopsBtns button { width: 50px !important; height: 50px !important; font-size: 1.2rem !important; margin: 5px !important; }
@@ -891,13 +925,13 @@ function initGame() {
             .bottom-btn .btn-label { font-size: 0.5rem !important; }
             #map-container { bottom: 45px !important; }
             
-            /* === استایل‌دهی اختصاصی مدل مجلس در موبایل برای جلوگیری از شکستن خطوط === */
+            /* استایل‌دهی اختصاصی مدل مجلس در موبایل */
             #councilModal { width: 92% !important; max-width: 350px !important; padding: 15px !important; gap: 10px !important; }
             .party-row { gap: 8px !important; padding: 8px !important; }
             .party-img { width: 40px !important; height: 40px !important; }
             .party-name { font-size: 0.8rem !important; }
             .party-desc { font-size: 0.65rem !important; }
-            .view-members-btn { padding: 3px 6px !important; font-size: 0.65rem !important; }
+            .view-members-btn { padding: 3px 6px !important; font-size: 0.65rem !important; white-space: nowrap !important; }
         }
     `;
     document.head.appendChild(style);
@@ -978,7 +1012,7 @@ function initGame() {
     if (gameScreen) gameScreen.insertAdjacentHTML('beforeend', barracksConfirmHTML);
     const barracksConfirmCancel = document.getElementById('barracksConfirmCancel'); if (barracksConfirmCancel) barracksConfirmCancel.onclick = () => { const m = document.getElementById('barracksConfirmModal'); m.style.display = 'none'; m.style.opacity = 0; };
 
-    // === ایجاد مودال مجلس و احزاب (اصلاح سایز متن‌ها برای جا شدن در یک خط) ===
+    // === ایجاد مودال مجلس و احزاب ===
     const councilModal = document.createElement('div'); 
     councilModal.id = 'councilModal'; 
     councilModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 400px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; gap: 15px; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
@@ -994,7 +1028,7 @@ function initGame() {
                 <div class="party-name" style="color: #e74c3c; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">سپاه پولاد</div>
                 <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار جنگ</div>
             </div>
-            <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
+            <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0; white-space: nowrap;">مشاهده اعضا</button>
         </div>
 
         <div class="party-row" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 10px;">
@@ -1003,7 +1037,7 @@ function initGame() {
                 <div class="party-name" style="color: #27ae60; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">دیوان ابادانی</div>
                 <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار ساخت و ساز</div>
             </div>
-            <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
+            <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0; white-space: nowrap;">مشاهده اعضا</button>
         </div>
 
         <div class="party-row" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 10px;">
@@ -1012,7 +1046,7 @@ function initGame() {
                 <div class="party-name" style="color: #3498db; font-weight: 700; font-size: 0.9rem; white-space: nowrap;">انجمن زمین‌شکافان</div>
                 <div class="party-desc" style="color: #aaa; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">طرفدار اکتشاف</div>
             </div>
-            <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">اعضا</button>
+            <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0; white-space: nowrap;">مشاهده اعضا</button>
         </div>
     `;
     if (gameScreen) gameScreen.appendChild(councilModal); 
