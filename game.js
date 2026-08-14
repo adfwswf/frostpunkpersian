@@ -965,7 +965,7 @@ function initGame() {
     if (gameScreen) gameScreen.insertAdjacentHTML('beforeend', barracksConfirmHTML);
     const barracksConfirmCancel = document.getElementById('barracksConfirmCancel'); if (barracksConfirmCancel) barracksConfirmCancel.onclick = () => { const m = document.getElementById('barracksConfirmModal'); m.style.display = 'none'; m.style.opacity = 0; };
 
-    // === ایجاد مودال مجلس و احزاب ===
+    // === ایجاد مودال مجلس و احزاب (اصلاح سایز متن‌ها برای جا شدن در یک خط) ===
     const councilModal = document.createElement('div'); 
     councilModal.id = 'councilModal'; 
     councilModal.style.cssText = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 90%; max-width: 400px; background: rgba(10,14,26,0.98); padding: 25px; border-radius: 16px; border: 1px solid #f4d03f; z-index: 1000; display: none; flex-direction: column; gap: 15px; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: 0; transition: 0.3s;";
@@ -978,7 +978,7 @@ function initGame() {
         <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_steel.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
-                <div style="color: #e74c3c; font-weight: 700; font-size: 1rem;">سپاه پولاد</div>
+                <div style="color: #e74c3c; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">سپاه پولاد</div>
                 <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار جنگ</div>
             </div>
             <button class="view-members-btn" data-party="سپاه پولاد" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
@@ -987,7 +987,7 @@ function initGame() {
         <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_reconstruction.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
-                <div style="color: #27ae60; font-weight: 700; font-size: 1rem;">دیوان ابادانی</div>
+                <div style="color: #27ae60; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">دیوان ابادانی</div>
                 <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار ساخت و ساز</div>
             </div>
             <button class="view-members-btn" data-party="دیوان ابادانی" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
@@ -996,7 +996,7 @@ function initGame() {
         <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); gap: 12px;">
             <img src="party_earthshakers.png" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #111; border: 1px solid #333; flex-shrink: 0;">
             <div style="flex: 1; text-align: right;">
-                <div style="color: #3498db; font-weight: 700; font-size: 1rem;">انجمن زمین‌شکافان</div>
+                <div style="color: #3498db; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">انجمن زمین‌شکافان</div>
                 <div style="color: #aaa; font-size: 0.8rem; margin-top: 2px;">طرفدار اکتشاف</div>
             </div>
             <button class="view-members-btn" data-party="انجمن زمین‌شکافان" style="padding: 4px 10px; background: transparent; border: 1px solid #f4d03f; color: #f4d03f; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Vazirmatn', sans-serif; flex-shrink: 0;">مشاهده اعضا</button>
